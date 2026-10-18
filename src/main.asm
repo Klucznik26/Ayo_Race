@@ -50,6 +50,7 @@ f_red dd 0.85,0.018,0.035
 f_white dd 0.97
 f_black dd 0.025
 f_glass dd 0.09,0.28,0.40
+f_blue_stripe dd 0.035,0.20,0.91
 f_gold dd 0.92,0.68,0.12
 f_tire dd 0.05,0.05,0.06
 f_stripe dd 0.97,0.96,0.89
@@ -128,6 +129,10 @@ glass_left:
 glass_right:
  dd 0.54,0.77,0.54, 0.54,0.77,-0.80, 0.47,1.08,-0.59, 0.47,1.08,0.21
 car_roof dd 0.0000,1.1000,-0.1900,0.5350,0.0950,0.4950
+; Narrow blue longitudinal racing stripe on hood, painted roof and rear.
+car_stripe_hood dd 0.0000,0.7100,0.8200,0.1550,0.0200,0.5950
+car_stripe_roof dd 0.0000,1.2010,-0.1900,0.1450,0.0090,0.3950
+car_stripe_rear dd 0.0000,0.7590,-1.1700,0.1500,0.0150,0.3500
 car_apillarL dd -0.5000,0.9250,0.3650,0.0640,0.2150,0.2150
 car_apillarR dd  0.5000,0.9250,0.3650,0.0640,0.2150,0.2150
 car_bpillarL dd -0.5230,0.9240,-0.2700,0.0570,0.2130,0.0780
@@ -398,6 +403,9 @@ car:
     lea rdi,[car_hood]
     lea rsi,[f_red]
     call draw_car_ellipsoid
+    lea rdi,[car_stripe_hood]
+    lea rsi,[f_blue_stripe]
+    call draw_car_ellipsoid
     ; Real framed coupe greenhouse: glass panels, solid painted roof, then posts.
     ; Flat glass should retain its dark blue color regardless of inherited normals.
     mov edi,GL_LIGHTING
@@ -418,6 +426,9 @@ car:
     call glEnable
     lea rdi,[car_roof]
     lea rsi,[f_red]
+    call draw_car_ellipsoid
+    lea rdi,[car_stripe_roof]
+    lea rsi,[f_blue_stripe]
     call draw_car_ellipsoid
     lea rdi,[car_apillarL]
     lea rsi,[f_red]
@@ -460,6 +471,9 @@ car:
     call draw_car_ellipsoid
     lea rdi,[car_tailR]
     lea rsi,[f_rearlamp]
+    call draw_car_ellipsoid
+    lea rdi,[car_stripe_rear]
+    lea rsi,[f_blue_stripe]
     call draw_car_ellipsoid
     ; Four round wheels, mounted along local X axle.
     ; The tires are cylinders and the alloy wheels are concentric disks.
