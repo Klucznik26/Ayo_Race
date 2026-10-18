@@ -9,7 +9,7 @@ extern glColorMaterial, glMaterialfv, glMaterialf, glLightfv
 extern glMatrixMode, glLoadIdentity, glPushMatrix, glPopMatrix, glMultMatrixf
 extern glTranslatef, glRotatef, glScalef, glColor3f
 extern glVertexPointer, glNormalPointer, glEnableClientState, glDrawArrays
-extern glBegin, glEnd, glVertex3f, glLineWidth
+extern glBegin, glEnd, glVertex3f, glVertex3fv, glLineWidth
 extern gluPerspective, gluLookAt, gluNewQuadric, gluSphere, gluCylinder, gluDisk
 extern sin, cos, atan2, printf
 
@@ -117,17 +117,23 @@ car_nose dd 0.0000, 0.4550, 1.1500, 0.9000, 0.2000, 0.4800
 car_tail dd 0.0000, 0.4950, -1.1250, 0.9000, 0.2500, 0.4800
 car_hood dd 0.0000, 0.6200, 0.7950, 0.7300, 0.1050, 0.6550
 ; Low painted roof, distinct glass panes and painted A/B/C pillars.
-car_roof dd 0.0000, 0.7650, -0.1200, 0.5050, 0.1250, 0.5400
-car_windscreen dd 0.0000, 0.7100, 0.2550, 0.3550, 0.1050, 0.1650
-car_rearwindow dd 0.0000, 0.7200, -0.5150, 0.3300, 0.0950, 0.1450
-car_sideglassL dd -0.3050, 0.7250, -0.0900, 0.1050, 0.0950, 0.3350
-car_sideglassR dd  0.3050, 0.7250, -0.0900, 0.1050, 0.0950, 0.3350
-car_apillarL dd -0.3600, 0.7300, 0.1550, 0.0550, 0.1450, 0.1500
-car_apillarR dd  0.3600, 0.7300, 0.1550, 0.0550, 0.1450, 0.1500
-car_bpillarL dd -0.3950, 0.7600, -0.1100, 0.0600, 0.1500, 0.0900
-car_bpillarR dd  0.3950, 0.7600, -0.1100, 0.0600, 0.1500, 0.0900
-car_cpillarL dd -0.3300, 0.7300, -0.4100, 0.0800, 0.1350, 0.1300
-car_cpillarR dd  0.3300, 0.7300, -0.4100, 0.0800, 0.1350, 0.1300
+; Cabin: distinct flat glazing panels, painted roof and A/B/C posts.
+; Each glass quad comprises four XYZ float triplets (GL_QUADS order).
+glass_front:
+ dd -0.49,0.76,0.57,  0.49,0.76,0.57,  0.44,1.08,0.24, -0.44,1.08,0.24
+glass_rear:
+ dd  0.45,0.76,-0.85, -0.45,0.76,-0.85, -0.43,1.08,-0.62, 0.43,1.08,-0.62
+glass_left:
+ dd -0.54,0.77,-0.80, -0.54,0.77,0.54, -0.47,1.08,0.21, -0.47,1.08,-0.59
+glass_right:
+ dd 0.54,0.77,0.54, 0.54,0.77,-0.80, 0.47,1.08,-0.59, 0.47,1.08,0.21
+car_roof dd 0.0000,1.1000,-0.1900,0.5350,0.0950,0.4950
+car_apillarL dd -0.5000,0.9250,0.3650,0.0640,0.2150,0.2150
+car_apillarR dd  0.5000,0.9250,0.3650,0.0640,0.2150,0.2150
+car_bpillarL dd -0.5230,0.9240,-0.2700,0.0570,0.2130,0.0780
+car_bpillarR dd  0.5230,0.9240,-0.2700,0.0570,0.2130,0.0780
+car_cpillarL dd -0.5050,0.9240,-0.7100,0.0800,0.2130,0.1550
+car_cpillarR dd  0.5050,0.9240,-0.7100,0.0800,0.2130,0.1550
 car_lfender dd -0.7550, 0.4950, 1.0500, 0.2400, 0.2300, 0.4450
 car_rfender dd 0.7550, 0.4950, 1.0500, 0.2400, 0.2300, 0.4450
 car_lrear dd -0.7550, 0.5000, -1.0500, 0.2450, 0.2350, 0.4450
@@ -325,6 +331,31 @@ draw_car_ellipsoid:
     pop rbx
     ret
 
+; Paint one quadrilateral mesh, 4 vertices x 3 floats; RDI vertices, RSI RGB.
+draw_cabin_quad:
+    push rbx
+    push r12
+    sub rsp,8
+    mov rbx,rdi
+    mov r12,rsi
+    mov rdi,r12
+    call set_rgb
+    mov edi,GL_QUADS
+    call glBegin
+    mov rdi,rbx
+    call glVertex3fv
+    lea rdi,[rbx+12]
+    call glVertex3fv
+    lea rdi,[rbx+24]
+    call glVertex3fv
+    lea rdi,[rbx+36]
+    call glVertex3fv
+    call glEnd
+    add rsp,8
+    pop r12
+    pop rbx
+    ret
+
 ; All world geometry from simple meshes; stylized sports car facing local +Z
 car:
     sub rsp,8
@@ -367,20 +398,21 @@ car:
     lea rdi,[car_hood]
     lea rsi,[f_red]
     call draw_car_ellipsoid
+    ; Real framed coupe greenhouse: glass panels, solid painted roof, then posts.
+    lea rdi,[glass_front]
+    lea rsi,[f_glass]
+    call draw_cabin_quad
+    lea rdi,[glass_rear]
+    lea rsi,[f_glass]
+    call draw_cabin_quad
+    lea rdi,[glass_left]
+    lea rsi,[f_glass]
+    call draw_cabin_quad
+    lea rdi,[glass_right]
+    lea rsi,[f_glass]
+    call draw_cabin_quad
     lea rdi,[car_roof]
     lea rsi,[f_red]
-    call draw_car_ellipsoid
-    lea rdi,[car_windscreen]
-    lea rsi,[f_glass]
-    call draw_car_ellipsoid
-    lea rdi,[car_rearwindow]
-    lea rsi,[f_glass]
-    call draw_car_ellipsoid
-    lea rdi,[car_sideglassL]
-    lea rsi,[f_glass]
-    call draw_car_ellipsoid
-    lea rdi,[car_sideglassR]
-    lea rsi,[f_glass]
     call draw_car_ellipsoid
     lea rdi,[car_apillarL]
     lea rsi,[f_red]
