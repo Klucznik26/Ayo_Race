@@ -94,8 +94,9 @@ for side in (-1,1):
 
 body=trimesh.Trimesh(vertices=np.asarray(verts),faces=np.asarray(faces),
                      process=False)
-# One-sided materials are handled correctly by reversed winding where needed.
-body.fix_normals()
+# Do not invoke fix_normals(): Trimesh may require optional scipy for
+# disconnected/open surfaces, and our body deliberately has open wheel arches.
+# Face normals are derived by Trimesh from vertex winding when exporting.
 add(body,"Sculpted body and real arched side panels",red)
 
 # Painted curved lip above each opening (small radius trim following arch).
