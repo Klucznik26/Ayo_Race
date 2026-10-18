@@ -106,6 +106,23 @@ car_body_scale dd 0.82,0.21,1.30
 car_cabin_scale dd 0.56,0.24,0.60
 spoiler_scale dd 0.78,0.055,0.17
 wheel_size dq 0.37
+unit_sphere_radius dq 1.0
+f_rearlamp dd 0.95,0.06,0.07
+car_body dd 0.0000, 0.4900, 0.0000, 0.7900, 0.2400, 1.2900
+car_nose dd 0.0000, 0.4500, 1.0200, 0.7200, 0.2000, 0.4200
+car_tail dd 0.0000, 0.5000, -0.9800, 0.7600, 0.2500, 0.4300
+car_hood dd 0.0000, 0.6400, 0.6700, 0.6500, 0.1000, 0.5500
+car_roof dd 0.0000, 0.7900, -0.2800, 0.5800, 0.3400, 0.7200
+car_windscreen dd 0.0000, 0.8100, 0.2600, 0.5100, 0.2500, 0.1400
+car_rearwindow dd 0.0000, 0.8300, -0.7500, 0.4900, 0.1900, 0.1400
+car_lfender dd -0.6900, 0.4800, 0.8300, 0.2700, 0.2900, 0.4500
+car_rfender dd 0.6900, 0.4800, 0.8300, 0.2700, 0.2900, 0.4500
+car_lrear dd -0.7200, 0.4900, -0.8500, 0.2900, 0.2800, 0.4400
+car_rrear dd 0.7200, 0.4900, -0.8500, 0.2900, 0.2800, 0.4400
+car_headL dd -0.5600, 0.6300, 1.3300, 0.1450, 0.1050, 0.1200
+car_headR dd 0.5600, 0.6300, 1.3300, 0.1450, 0.1050, 0.1200
+car_tailL dd -0.5800, 0.6100, -1.3100, 0.1700, 0.0950, 0.1000
+car_tailR dd 0.5800, 0.6100, -1.3100, 0.1700, 0.0950, 0.1000
 
 ; 24 independent vertices, six cube faces with corresponding normals
 cube_vertices:
@@ -264,6 +281,37 @@ scale3:
     movss xmm2,[rdi+8]
     jmp glScalef
 
+; Rounded component: RDI -> six floats (position XYZ, scale XYZ),
+; RSI -> RGB floats. Geometry is a scaled unit sphere.
+; System V AMD64: preserve RBX/R12 and 16-byte stack alignment.
+draw_car_ellipsoid:
+    push rbx
+    push r12
+    sub rsp,8
+    mov rbx,rdi
+    mov r12,rsi
+    call glPushMatrix
+    movss xmm0,[rbx]
+    movss xmm1,[rbx+4]
+    movss xmm2,[rbx+8]
+    call glTranslatef
+    movss xmm0,[rbx+12]
+    movss xmm1,[rbx+16]
+    movss xmm2,[rbx+20]
+    call glScalef
+    mov rdi,r12
+    call set_rgb
+    mov rdi,[quadric]
+    movsd xmm0,[unit_sphere_radius]
+    mov esi,24
+    mov edx,16
+    call gluSphere
+    call glPopMatrix
+    add rsp,8
+    pop r12
+    pop rbx
+    ret
+
 ; All world geometry from simple meshes; stylized sports car facing local +Z
 car:
     sub rsp,8
@@ -292,103 +340,53 @@ car:
     movss [yaw_matrix+8],xmm0
     lea rdi,[yaw_matrix]
     call glMultMatrixf
-    ; Body
-    call glPushMatrix
-    movss xmm0,[f_zero]
-    mov dword [tmpx],0x3f051eb8   ; body y=0.52
-    movss xmm1,[tmpx]
-    movss xmm2,[f_zero]
-    call glTranslatef
-    lea rdi,[car_body_scale]
-    call scale3
-    lea rdi,[f_red]
-    call set_rgb
-    call cube
-    call glPopMatrix
-    ; bright center stripe on the hood
-    call glPushMatrix
-    movss xmm0,[f_zero]
-    mov dword [tmpx],0x3f3d70a4
-    movss xmm1,[tmpx]
-    mov dword [tmpx],0x3f666666
-    movss xmm2,[tmpx]
-    call glTranslatef
-    mov dword [tmpx],0x3e4ccccd
-    movss xmm0,[tmpx]
-    mov dword [tmpx],0x3c23d70a
-    movss xmm1,[tmpx]
-    mov dword [tmpx],0x3ef5c28f
-    movss xmm2,[tmpx]
-    call glScalef
-    lea rdi,[f_stripe]
-    call set_rgb
-    call cube
-    call glPopMatrix
-    ; Windscreen / cabin
-    call glPushMatrix
-    movss xmm0,[f_zero]
-    mov dword [tmpx],0x3f147ae1   ; cabin center y=0.58
-    movss xmm1,[tmpx]
-    mov dword [tmpx],0xbeb33333   ; cabin z=-0.35
-    movss xmm2,[tmpx]
-    call glTranslatef
-    lea rdi,[car_cabin_scale]
-    call scale3
-    lea rdi,[f_roof]
-    call set_rgb
-    call cube
-    call glPopMatrix
-    ; contrasting front headlights
-    call glPushMatrix
-    mov dword [tmpx],0xbf19999a ; x=-0.60
-    movss xmm0,[tmpx]
-    mov dword [tmpx],0x3f0ccccd ; y=.55
-    movss xmm1,[tmpx]
-    mov dword [tmpx],0x3fa66666 ; z=1.30
-    movss xmm2,[tmpx]
-    call glTranslatef
-    mov dword [tmpx],0x3e3851ec ; .18
-    movss xmm0,[tmpx]
-    mov dword [tmpx],0x3d4ccccd ; .05
-    movss xmm1,[tmpx]
-    movss xmm2,[tmpx]
-    call glScalef
-    lea rdi,[f_lamp]
-    call set_rgb
-    call cube
-    call glPopMatrix
-    call glPushMatrix
-    mov dword [tmpx],0x3f19999a ; x=+.60
-    movss xmm0,[tmpx]
-    mov dword [tmpx],0x3f0ccccd ; y=.55
-    movss xmm1,[tmpx]
-    mov dword [tmpx],0x3fa66666 ; z=1.30
-    movss xmm2,[tmpx]
-    call glTranslatef
-    mov dword [tmpx],0x3e3851ec
-    movss xmm0,[tmpx]
-    mov dword [tmpx],0x3d4ccccd
-    movss xmm1,[tmpx]
-    movss xmm2,[tmpx]
-    call glScalef
-    lea rdi,[f_lamp]
-    call set_rgb
-    call cube
-    call glPopMatrix
-    ; spoiler
-    call glPushMatrix
-    movss xmm0,[f_zero]
-    mov dword [tmpx],0x3f333333 ; 0.7
-    movss xmm1,[tmpx]
-    mov dword [tmpx],0xbf666666 ; -0.9
-    movss xmm2,[tmpx]
-    call glTranslatef
-    lea rdi,[spoiler_scale]
-    call scale3
-    lea rdi,[f_roof]
-    call set_rgb
-    call cube
-    call glPopMatrix
+    ; Stylized round-bodied rear-engine sports coupe.
+    ; No box geometry: all body pieces are smooth scaled 3D meshes.
+    lea rdi,[car_body]
+    lea rsi,[f_red]
+    call draw_car_ellipsoid
+    lea rdi,[car_nose]
+    lea rsi,[f_red]
+    call draw_car_ellipsoid
+    lea rdi,[car_tail]
+    lea rsi,[f_red]
+    call draw_car_ellipsoid
+    lea rdi,[car_hood]
+    lea rsi,[f_red]
+    call draw_car_ellipsoid
+    lea rdi,[car_roof]
+    lea rsi,[f_roof]
+    call draw_car_ellipsoid
+    lea rdi,[car_windscreen]
+    lea rsi,[f_glass]
+    call draw_car_ellipsoid
+    lea rdi,[car_rearwindow]
+    lea rsi,[f_glass]
+    call draw_car_ellipsoid
+    lea rdi,[car_lfender]
+    lea rsi,[f_red]
+    call draw_car_ellipsoid
+    lea rdi,[car_rfender]
+    lea rsi,[f_red]
+    call draw_car_ellipsoid
+    lea rdi,[car_lrear]
+    lea rsi,[f_red]
+    call draw_car_ellipsoid
+    lea rdi,[car_rrear]
+    lea rsi,[f_red]
+    call draw_car_ellipsoid
+    lea rdi,[car_headL]
+    lea rsi,[f_lamp]
+    call draw_car_ellipsoid
+    lea rdi,[car_headR]
+    lea rsi,[f_lamp]
+    call draw_car_ellipsoid
+    lea rdi,[car_tailL]
+    lea rsi,[f_rearlamp]
+    call draw_car_ellipsoid
+    lea rdi,[car_tailR]
+    lea rsi,[f_rearlamp]
+    call draw_car_ellipsoid
     ; Four round wheels, mounted along local X axle.
     ; The tires are cylinders and the alloy wheels are concentric disks.
     xor r14d,r14d
