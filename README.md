@@ -15,7 +15,7 @@ sudo dnf install nasm gcc SDL2-devel mesa-libGL-devel mesa-libGLU-devel
 ## Build and run
 
 ```bash
-./build.sh
+bash build.sh
 ./ayo-race
 ```
 
