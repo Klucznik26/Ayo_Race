@@ -67,8 +67,8 @@ f_hub dd 0.22,0.24,0.30
 f_brake dd 0.12,0.12,0.14
 wheel_90 dd 90.0
 wheel_180 dd 180.0
-wheel_radius dq 0.375
-wheel_inner dq 0.225
+wheel_radius dq 0.340
+wheel_inner dq 0.215
 wheel_hub_radius dq 0.075
 wheel_width dq 0.30
 wheel_face_offset dd 0.335
@@ -180,8 +180,8 @@ car_lfender dd -0.7550, 0.4950, 1.0500, 0.2400, 0.2300, 0.4450
 car_rfender dd 0.7550, 0.4950, 1.0500, 0.2400, 0.2300, 0.4450
 car_lrear dd -0.7550, 0.5000, -1.0500, 0.2450, 0.2350, 0.4450
 car_rrear dd 0.7550, 0.5000, -1.0500, 0.2450, 0.2350, 0.4450
-car_headL dd -0.5600, 0.6300, 1.5300, 0.1450, 0.1050, 0.1200
-car_headR dd 0.5600, 0.6300, 1.5300, 0.1450, 0.1050, 0.1200
+car_headL dd -0.5200, 0.6250, 1.3350, 0.1450, 0.0550, 0.0650
+car_headR dd 0.5200, 0.6250, 1.3350, 0.1450, 0.0550, 0.0650
 car_tailL dd -0.5800, 0.6100, -1.5300, 0.1700, 0.0950, 0.1000
 car_tailR dd 0.5800, 0.6100, -1.5300, 0.1700, 0.0950, 0.1000
 
@@ -490,10 +490,10 @@ car:
     call glEnable
     ; Fender shoulders are integral to the generated body mesh.
     lea rdi,[car_headL]
-    lea rsi,[f_lamp]
+    lea rsi,[f_rim]
     call draw_car_ellipsoid
     lea rdi,[car_headR]
-    lea rsi,[f_lamp]
+    lea rsi,[f_rim]
     call draw_car_ellipsoid
     lea rdi,[car_tailL]
     lea rsi,[f_rearlamp]
@@ -523,7 +523,7 @@ car:
     mov dword [tmpz],0xbf866666   ; rear axle z=-1.05
 .zset:
     movss xmm0,[tmpx]
-    mov dword [tmpx],0x3ec28f5c   ; wheel center y=0.38
+    mov dword [tmpx],0x3e99999a   ; wheel center y=0.30; top under body shoulders
     movss xmm1,[tmpx]
     movss xmm2,[tmpz]
     call glTranslatef
