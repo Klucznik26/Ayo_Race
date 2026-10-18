@@ -48,7 +48,7 @@ def wheel_arch(tri):
     z = sum(p[2] for p in tri) / 3
     if abs(x) < .61:
         return False
-    return any(((z-axle)/.48)**2 + ((y-.38)/.46)**2 < 1
+    return any(((z-axle)/.51)**2 + ((y-.38)/.49)**2 < 1
                for axle in (-1.05, 1.05))
 for i in range(STATIONS-1):
     for j in range(SEGMENTS):
