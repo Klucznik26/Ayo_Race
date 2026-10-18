@@ -1,0 +1,550 @@
+default rel
+global main
+
+extern SDL_Init, SDL_Quit, SDL_CreateWindow, SDL_DestroyWindow
+extern SDL_GL_CreateContext, SDL_GL_DeleteContext, SDL_GL_SwapWindow
+extern SDL_GL_SetSwapInterval, SDL_PollEvent, SDL_Delay, SDL_GetError
+extern glClearColor, glClear, glViewport, glEnable, glShadeModel
+extern glColorMaterial, glMaterialfv, glMaterialf, glLightfv
+extern glMatrixMode, glLoadIdentity, glPushMatrix, glPopMatrix
+extern glTranslatef, glRotatef, glScalef, glColor3f
+extern glVertexPointer, glNormalPointer, glEnableClientState, glDrawArrays
+extern glBegin, glEnd, glVertex3f, glLineWidth
+extern gluPerspective, gluLookAt, gluNewQuadric, gluSphere
+extern sin, cos, atan2, printf
+
+%define SDL_INIT_VIDEO 0x20
+%define SDL_WINDOW_OPENGL 2
+%define SDL_WINDOW_SHOWN 4
+%define SDL_QUIT 0x100
+%define SDL_KEYDOWN 0x300
+%define GL_COLOR_BUFFER_BIT 0x4000
+%define GL_DEPTH_BUFFER_BIT 0x0100
+%define GL_DEPTH_TEST 0x0b71
+%define GL_LIGHTING 0x0b50
+%define GL_LIGHT0 0x4000
+%define GL_COLOR_MATERIAL 0x0b57
+%define GL_FRONT_AND_BACK 0x0408
+%define GL_AMBIENT_AND_DIFFUSE 0x1602
+%define GL_POSITION 0x1203
+%define GL_SPECULAR 0x1202
+%define GL_SHININESS 0x1601
+%define GL_PROJECTION 0x1701
+%define GL_MODELVIEW 0x1700
+%define GL_VERTEX_ARRAY 0x8074
+%define GL_NORMAL_ARRAY 0x8075
+%define GL_FLOAT 0x1406
+%define GL_QUADS 7
+%define GL_QUAD_STRIP 8
+%define GL_LINE_LOOP 2
+
+section .rodata align=16
+caption db "Ayo Race 0.1 — ASM 3D Demo | Esc: exit",0
+error_fmt db "SDL error: %s",10,0
+f_zero dd 0.0
+f_one dd 1.0
+f_red dd 0.93,0.075,0.085
+f_white dd 0.97
+f_black dd 0.025
+f_glass dd 0.09,0.28,0.40
+f_gold dd 0.92,0.68,0.12
+f_tire dd 0.05,0.05,0.06
+f_wood dd 0.66,0.46,0.30
+f_sky dd 0.64,0.81,0.98,1.0
+light_pos dd -5.0,12.0,6.0,1.0
+light_diffuse dd 1.0,0.97,0.90,1.0
+specular dd 0.65,0.65,0.65,1.0
+shininess dd 85.0
+aspect dq 1.77777777777778
+fovy dq 48.0
+near_z dq 0.1
+far_z dq 100.0
+eye_x dq 0.0
+eye_y dq 15.5
+eye_z dq 18.5
+target_x dq 0.0
+target_y dq 0.0
+target_z dq 0.0
+up_x dq 0.0
+up_y dq 1.0
+up_z dq 0.0
+twopi dq 6.283185307179586
+pi_over_180 dq 57.29577951308232
+step_angle dq 0.0090
+road_outer_x dq 8.0
+road_outer_z dq 5.0
+road_inner_x dq 5.7
+road_inner_z dq 2.7
+path_x dq 6.85
+path_z dq 3.85
+road_edge_x dq 7.85
+road_edge_z dq 4.85
+road_inner_line_x dq 5.85
+road_inner_line_z dq 2.85
+road_lane_x dq 6.85
+road_lane_z dq 3.85
+unit_x dq 1.0
+half_turn dq 3.141592653589793
+neg_one dd -1.0
+zero_d dq 0.0
+ground_scale dd 20.0,0.12,15.0
+car_body_scale dd 0.91,0.29,1.36
+car_cabin_scale dd 0.68,0.32,0.65
+spoiler_scale dd 0.89,0.055,0.20
+wheel_size dq 0.37
+
+; 24 independent vertices, six cube faces with corresponding normals
+cube_vertices:
+dd -1.0,-1.0, 1.0,  1.0,-1.0, 1.0,  1.0, 1.0, 1.0, -1.0, 1.0, 1.0
+dd  1.0,-1.0,-1.0, -1.0,-1.0,-1.0, -1.0, 1.0,-1.0,  1.0, 1.0,-1.0
+dd -1.0,-1.0,-1.0, -1.0,-1.0, 1.0, -1.0, 1.0, 1.0, -1.0, 1.0,-1.0
+dd  1.0,-1.0, 1.0,  1.0,-1.0,-1.0,  1.0, 1.0,-1.0,  1.0, 1.0, 1.0
+dd -1.0, 1.0, 1.0,  1.0, 1.0, 1.0,  1.0, 1.0,-1.0, -1.0, 1.0,-1.0
+dd -1.0,-1.0,-1.0,  1.0,-1.0,-1.0,  1.0,-1.0, 1.0, -1.0,-1.0, 1.0
+cube_normals:
+times 4 dd 0.0,0.0,1.0
+times 4 dd 0.0,0.0,-1.0
+times 4 dd -1.0,0.0,0.0
+times 4 dd 1.0,0.0,0.0
+times 4 dd 0.0,1.0,0.0
+times 4 dd 0.0,-1.0,0.0
+
+section .bss align=16
+window resq 1
+context resq 1
+quadric resq 1
+event resb 64
+angle resq 1
+tvalue resq 1
+sx resq 1
+cz resq 1
+cx resq 1
+yaw resd 1
+carx resd 1
+carz resd 1
+tmpx resd 1
+tmpz resd 1
+
+section .text
+
+; glColor3f from packed RGB floats at RDI
+set_rgb:
+    movss xmm0,[rdi]
+    movss xmm1,[rdi+4]
+    movss xmm2,[rdi+8]
+    jmp glColor3f
+
+; draw unit cube centered on origin
+cube:
+    mov edi, GL_QUADS
+    xor esi,esi
+    mov edx,24
+    jmp glDrawArrays
+
+; draw a flat horizontal XZ ring with 96 segments
+track:
+    lea rdi,[f_black]
+    movss xmm0,[rdi]
+    movss xmm1,[rdi]
+    movss xmm2,[rdi]
+    call glColor3f
+    mov edi,GL_QUAD_STRIP
+    call glBegin
+    xor r12d,r12d
+.loop:
+    cmp r12d,96
+    ja .end
+    cvtsi2sd xmm0,r12d
+    mulsd xmm0,[twopi]
+    mov eax,96
+    cvtsi2sd xmm1,eax
+    divsd xmm0,xmm1
+    movsd [tvalue],xmm0
+    call cos
+    movsd [cx],xmm0
+    movsd xmm0,[tvalue]
+    call sin
+    movsd [sx],xmm0
+    movsd xmm0,[cx]
+    mulsd xmm0,[road_outer_x]
+    cvtsd2ss xmm0,xmm0
+    movss xmm1,[f_zero]
+    movsd xmm2,[sx]
+    mulsd xmm2,[road_outer_z]
+    cvtsd2ss xmm2,xmm2
+    call glVertex3f
+    movsd xmm0,[cx]
+    mulsd xmm0,[road_inner_x]
+    cvtsd2ss xmm0,xmm0
+    movss xmm1,[f_zero]
+    movsd xmm2,[sx]
+    mulsd xmm2,[road_inner_z]
+    cvtsd2ss xmm2,xmm2
+    call glVertex3f
+    inc r12d
+    jmp .loop
+.end:
+    call glEnd
+    ; painted white lines on both sides of black asphalt
+    movsd xmm0,[road_edge_x]
+    movsd xmm1,[road_edge_z]
+    call white_loop
+    movsd xmm0,[road_inner_line_x]
+    movsd xmm1,[road_inner_line_z]
+    call white_loop
+    ret
+
+; XMM0 = ellipse radius X (double), XMM1 = radius Z
+white_loop:
+    sub rsp,24
+    movsd [rsp],xmm0
+    movsd [rsp+8],xmm1
+    lea rdi,[f_white]
+    movss xmm0,[rdi]
+    movss xmm1,[rdi]
+    movss xmm2,[rdi]
+    call glColor3f
+    movss xmm0,[f_one]
+    addss xmm0,[f_one]
+    call glLineWidth
+    mov edi,GL_LINE_LOOP
+    call glBegin
+    xor r13d,r13d
+.loop:
+    cmp r13d,96
+    je .end
+    cvtsi2sd xmm0,r13d
+    mulsd xmm0,[twopi]
+    mov eax,96
+    cvtsi2sd xmm1,eax
+    divsd xmm0,xmm1
+    movsd [tvalue],xmm0
+    call cos
+    movsd [cx],xmm0
+    movsd xmm0,[tvalue]
+    call sin
+    mulsd xmm0,[rsp+8]
+    cvtsd2ss xmm2,xmm0
+    movsd xmm0,[cx]
+    mulsd xmm0,[rsp]
+    cvtsd2ss xmm0,xmm0
+    movss xmm1,[f_zero]
+    call glVertex3f
+    inc r13d
+    jmp .loop
+.end:
+    call glEnd
+    add rsp,24
+    ret
+
+; RDI = scale triple, no other arguments
+scale3:
+    movss xmm0,[rdi]
+    movss xmm1,[rdi+4]
+    movss xmm2,[rdi+8]
+    jmp glScalef
+
+; All world geometry from simple meshes; stylized sports car facing local +Z
+car:
+    call glPushMatrix
+    movss xmm0,[carx]
+    movss xmm1,[f_zero]
+    movss xmm2,[carz]
+    call glTranslatef
+    movss xmm0,[yaw]
+    movss xmm1,[f_zero]
+    movss xmm2,[f_one]
+    movss xmm3,[f_zero]
+    call glRotatef                 ; rotation around Y (fix below via explicit call)
+    ; Body
+    call glPushMatrix
+    movss xmm0,[f_zero]
+    mov dword [tmpx],0x3ee66666   ; 0.45
+    movss xmm1,[tmpx]
+    movss xmm2,[f_zero]
+    call glTranslatef
+    lea rdi,[car_body_scale]
+    call scale3
+    lea rdi,[f_red]
+    call set_rgb
+    call cube
+    call glPopMatrix
+    ; Windscreen / cabin
+    call glPushMatrix
+    movss xmm0,[f_zero]
+    mov dword [tmpx],0x3f28f5c3   ; 0.66
+    movss xmm1,[tmpx]
+    mov dword [tmpx],0xbe99999a   ; -0.30
+    movss xmm2,[tmpx]
+    call glTranslatef
+    lea rdi,[car_cabin_scale]
+    call scale3
+    lea rdi,[f_glass]
+    call set_rgb
+    call cube
+    call glPopMatrix
+    ; spoiler
+    call glPushMatrix
+    movss xmm0,[f_zero]
+    mov dword [tmpx],0x3f4ccccd ; 0.8
+    movss xmm1,[tmpx]
+    mov dword [tmpx],0xbf800000 ; -1.0
+    movss xmm2,[tmpx]
+    call glTranslatef
+    lea rdi,[spoiler_scale]
+    call scale3
+    lea rdi,[f_gold]
+    call set_rgb
+    call cube
+    call glPopMatrix
+    ; four wheels, simple dark spheres for prototype
+    xor r14d,r14d
+.wheels:
+    cmp r14d,4
+    je .done
+    call glPushMatrix
+    test r14d,1
+    jz .left
+    mov dword [tmpx],0x3f666666  ; +0.9
+    jmp .xset
+.left:
+    mov dword [tmpx],0xbf666666  ; -0.9
+.xset:
+    cmp r14d,2
+    jb .back
+    mov dword [tmpz],0x3f333333  ; +0.7
+    jmp .zset
+.back:
+    mov dword [tmpz],0xbf333333  ; -0.7
+.zset:
+    movss xmm0,[tmpx]
+    mov dword [tmpx],0x3ea3d70a ; 0.32
+    movss xmm1,[tmpx]
+    movss xmm2,[tmpz]
+    call glTranslatef
+    lea rdi,[f_tire]
+    call set_rgb
+    mov rdi,[quadric]
+    movsd xmm0,[wheel_size]
+    mov esi,16
+    mov edx,12
+    call gluSphere
+    call glPopMatrix
+    inc r14d
+    jmp .wheels
+.done:
+    call glPopMatrix
+    ret
+
+; Calculate x/z and heading for a car on elliptical loop.
+move_car:
+    movsd xmm0,[angle]
+    call cos
+    mulsd xmm0,[path_x]
+    cvtsd2ss xmm0,xmm0
+    movss [carx],xmm0
+    movsd xmm0,[angle]
+    call sin
+    mulsd xmm0,[path_z]
+    cvtsd2ss xmm0,xmm0
+    movss [carz],xmm0
+    ; tangent (dx/dt, dz/dt) = (-rx sin(t), rz cos(t))
+    movsd xmm0,[angle]
+    call sin
+    mulsd xmm0,[path_x]
+    xorpd xmm0,[sign_double]
+    movsd [sx],xmm0
+    movsd xmm0,[angle]
+    call cos
+    mulsd xmm0,[path_z]
+    movapd xmm1,xmm0
+    movsd xmm0,[sx]
+    call atan2
+    mulsd xmm0,[pi_over_180]
+    cvtsd2ss xmm0,xmm0
+    movss [yaw],xmm0
+    movsd xmm0,[angle]
+    addsd xmm0,[step_angle]
+    ucomisd xmm0,[twopi]
+    jb .store
+    subsd xmm0,[twopi]
+.store:
+    movsd [angle],xmm0
+    ret
+
+scene:
+    mov edi,GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT
+    call glClear
+    mov edi,GL_MODELVIEW
+    call glMatrixMode
+    call glLoadIdentity
+    movsd xmm0,[eye_x]
+    movsd xmm1,[eye_y]
+    movsd xmm2,[eye_z]
+    movsd xmm3,[target_x]
+    movsd xmm4,[target_y]
+    movsd xmm5,[target_z]
+    movsd xmm6,[up_x]
+    movsd xmm7,[up_y]
+    sub rsp,16
+    mov rax,[up_z]
+    mov [rsp],rax
+    call gluLookAt
+    add rsp,16
+    mov edi,GL_LIGHT0
+    mov esi,GL_POSITION
+    lea rdx,[light_pos]
+    call glLightfv
+    ; table
+    call glPushMatrix
+    movss xmm0,[f_zero]
+    mov dword [tmpx],0xbec28f5c ; -0.38
+    movss xmm1,[tmpx]
+    movss xmm2,[f_zero]
+    call glTranslatef
+    lea rdi,[ground_scale]
+    call scale3
+    lea rdi,[f_wood]
+    call set_rgb
+    call cube
+    call glPopMatrix
+    call track
+    call move_car
+    call car
+    ret
+
+main:
+    push rbp
+    mov rbp,rsp
+    push rbx
+    push r12
+    push r13
+    push r14
+    sub rsp,8                  ; stack 16-byte aligned
+    mov edi,SDL_INIT_VIDEO
+    call SDL_Init
+    test eax,eax
+    js .fail
+    lea rdi,[caption]
+    mov esi,0x2fff0000
+    mov edx,0x2fff0000
+    mov ecx,1280
+    mov r8d,720
+    mov r9d,SDL_WINDOW_OPENGL|SDL_WINDOW_SHOWN
+    call SDL_CreateWindow
+    test rax,rax
+    jz .fail
+    mov [window],rax
+    mov rdi,rax
+    call SDL_GL_CreateContext
+    test rax,rax
+    jz .fail
+    mov [context],rax
+    mov edi,1
+    call SDL_GL_SetSwapInterval
+    mov edi,0
+    mov esi,0
+    mov edx,1280
+    mov ecx,720
+    call glViewport
+    movss xmm0,[f_sky]
+    movss xmm1,[f_sky+4]
+    movss xmm2,[f_sky+8]
+    movss xmm3,[f_sky+12]
+    call glClearColor
+    mov edi,GL_DEPTH_TEST
+    call glEnable
+    mov edi,GL_LIGHTING
+    call glEnable
+    mov edi,GL_LIGHT0
+    call glEnable
+    mov edi,GL_COLOR_MATERIAL
+    call glEnable
+    mov edi,GL_FRONT_AND_BACK
+    mov esi,GL_AMBIENT_AND_DIFFUSE
+    call glColorMaterial
+    mov edi,GL_FRONT_AND_BACK
+    mov esi,GL_SPECULAR
+    lea rdx,[specular]
+    call glMaterialfv
+    mov edi,GL_FRONT_AND_BACK
+    mov esi,GL_SHININESS
+    movss xmm0,[shininess]
+    call glMaterialf
+    mov edi,GL_LIGHT0
+    mov esi,0x1201       ; GL_DIFFUSE
+    lea rdx,[light_diffuse]
+    call glLightfv
+    mov edi,GL_PROJECTION
+    call glMatrixMode
+    call glLoadIdentity
+    movsd xmm0,[fovy]
+    movsd xmm1,[aspect]
+    movsd xmm2,[near_z]
+    movsd xmm3,[far_z]
+    call gluPerspective
+    mov edi,GL_MODELVIEW
+    call glMatrixMode
+    mov edi,GL_VERTEX_ARRAY
+    call glEnableClientState
+    mov edi,GL_NORMAL_ARRAY
+    call glEnableClientState
+    mov edi,3
+    mov esi,GL_FLOAT
+    xor edx,edx
+    lea rcx,[cube_vertices]
+    call glVertexPointer
+    mov edi,GL_FLOAT
+    xor esi,esi
+    lea rdx,[cube_normals]
+    call glNormalPointer
+    call gluNewQuadric
+    mov [quadric],rax
+.loop:
+    lea rdi,[event]
+    call SDL_PollEvent
+    test eax,eax
+    jz .frame
+    mov eax,[event]
+    cmp eax,SDL_QUIT
+    je .quit
+    cmp eax,SDL_KEYDOWN
+    jne .loop
+    cmp dword [event+20],27
+    je .quit
+    jmp .loop
+.frame:
+    call scene
+    mov rdi,[window]
+    call SDL_GL_SwapWindow
+    mov edi,16
+    call SDL_Delay
+    jmp .loop
+.quit:
+    mov rdi,[context]
+    call SDL_GL_DeleteContext
+    mov rdi,[window]
+    call SDL_DestroyWindow
+    call SDL_Quit
+    xor eax,eax
+    jmp .ret
+.fail:
+    call SDL_GetError
+    lea rdi,[error_fmt]
+    mov rsi,rax
+    xor eax,eax
+    call printf
+    mov eax,1
+.ret:
+    add rsp,8
+    pop r14
+    pop r13
+    pop r12
+    pop rbx
+    pop rbp
+    ret
+
+section .rodata
+align 16
+sign_double dq 0x8000000000000000
+section .note.GNU-stack noalloc noexec nowrite progbits
