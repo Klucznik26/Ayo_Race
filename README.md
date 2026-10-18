@@ -32,3 +32,27 @@ Run as a normal desktop application in KDE Plasma or inside Sayari (provided Say
 - Next: polished car mesh, shadows, better lighting, material shaders, smooth camera
 
 The project does not use any original Micro Machines or Hot Wheels assets.
+
+## Separate 3D model workflow (no Blender needed)
+
+The offline model generator lives in `tools/model_coupe_trimesh.py`.
+It makes a **new experimental GLB/OBJ model** using explicit wheel-arch contours.
+This model is **not yet loaded by the NASM game**: the game still renders its
+older generated mesh; the external model is a separate model-development branch
+of work.
+
+On Fedora:
+
+```bash
+cd "/home/marek/AYO Projekty/Ayo_Race"
+python3 -m venv .venv
+source .venv/bin/activate
+pip install numpy trimesh matplotlib
+python3 tools/test_model.py
+python3 tools/preview_model.py
+```
+
+Drag with the mouse to rotate the model; scroll to zoom. The preview does not
+require Blender. Files are created under `assets/models/` (GLB and OBJ).
+When the shape is satisfactory, we will import this mesh into the game's ASM
+renderer instead of using the old `tools/generate_car.py` body generator.
