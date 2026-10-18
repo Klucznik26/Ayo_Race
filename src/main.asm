@@ -6,7 +6,7 @@ extern SDL_GL_CreateContext, SDL_GL_DeleteContext, SDL_GL_SwapWindow
 extern SDL_GL_SetSwapInterval, SDL_PollEvent, SDL_Delay, SDL_GetError
 extern glClearColor, glClear, glViewport, glEnable, glDisable, glShadeModel
 extern glColorMaterial, glMaterialfv, glMaterialf, glLightfv
-extern glMatrixMode, glLoadIdentity, glPushMatrix, glPopMatrix
+extern glMatrixMode, glLoadIdentity, glPushMatrix, glPopMatrix, glMultMatrixf
 extern glTranslatef, glRotatef, glScalef, glColor3f
 extern glVertexPointer, glNormalPointer, glEnableClientState, glDrawArrays
 extern glBegin, glEnd, glVertex3f, glLineWidth
@@ -124,6 +124,9 @@ sx resq 1
 cz resq 1
 cos_x resq 1
 yaw resd 1
+yaw_rad resq 1
+align 16
+yaw_matrix: resd 16
 carx resd 1
 carz resd 1
 tmpx resd 1
@@ -259,11 +262,26 @@ car:
     movss xmm1,[f_zero]
     movss xmm2,[carz]
     call glTranslatef
-    movss xmm0,[yaw]
-    movss xmm1,[f_one]
-    movss xmm2,[f_zero]
-    movss xmm3,[f_zero]
-    call glRotatef                 ; yaw around world Y
+    ; Explicit column-major rotation around global UP axis (Y).
+    ; Rotation matrix:
+    ; [ cos 0 sin 0 ]
+    ; [  0  1  0  0 ]
+    ; [-sin 0 cos 0 ]
+    ; [  0  0  0  1 ]
+    ; This makes pitching/rolling physically impossible regardless of camera.
+    movsd xmm0,[yaw_rad]
+    call cos
+    cvtsd2ss xmm0,xmm0
+    movss [yaw_matrix+0],xmm0
+    movss [yaw_matrix+40],xmm0
+    movsd xmm0,[yaw_rad]
+    call sin
+    cvtsd2ss xmm0,xmm0
+    movss [yaw_matrix+32],xmm0
+    xorps xmm0,[sign_float]
+    movss [yaw_matrix+8],xmm0
+    lea rdi,[yaw_matrix]
+    call glMultMatrixf
     ; Body
     call glPushMatrix
     movss xmm0,[f_zero]
@@ -429,6 +447,7 @@ move_car:
     movapd xmm1,xmm0
     movsd xmm0,[sx]
     call atan2
+    movsd [yaw_rad],xmm0
     mulsd xmm0,[pi_over_180]
     cvtsd2ss xmm0,xmm0
     movss [yaw],xmm0
@@ -574,6 +593,9 @@ main:
     call glNormalPointer
     call gluNewQuadric
     mov [quadric],rax
+    ; Y-axis yaw matrix, identity terms never vary
+    mov dword [yaw_matrix+20],0x3f800000
+    mov dword [yaw_matrix+60],0x3f800000
 .loop:
     lea rdi,[event]
     call SDL_PollEvent
@@ -620,4 +642,6 @@ main:
 section .rodata
 align 16
 sign_double dq 0x8000000000000000
+align 16
+sign_float dd 0x80000000,0,0,0
 section .note.GNU-stack noalloc noexec nowrite progbits
