@@ -116,9 +116,18 @@ car_body dd 0.0000, 0.4800, 0.0000, 0.9850, 0.2600, 1.4800
 car_nose dd 0.0000, 0.4550, 1.1500, 0.9000, 0.2000, 0.4800
 car_tail dd 0.0000, 0.4950, -1.1250, 0.9000, 0.2500, 0.4800
 car_hood dd 0.0000, 0.6200, 0.7950, 0.7300, 0.1050, 0.6550
-car_roof dd 0.0000, 0.8050, -0.3000, 0.5700, 0.2550, 0.7400
-car_windscreen dd 0.0000, 0.8100, 0.2600, 0.5100, 0.2500, 0.1400
-car_rearwindow dd 0.0000, 0.8300, -0.7500, 0.4900, 0.1900, 0.1400
+; Low painted roof, distinct glass panes and painted A/B/C pillars.
+car_roof dd 0.0000, 0.7650, -0.1200, 0.5050, 0.1250, 0.5400
+car_windscreen dd 0.0000, 0.7100, 0.2550, 0.3550, 0.1050, 0.1650
+car_rearwindow dd 0.0000, 0.7200, -0.5150, 0.3300, 0.0950, 0.1450
+car_sideglassL dd -0.3050, 0.7250, -0.0900, 0.1050, 0.0950, 0.3350
+car_sideglassR dd  0.3050, 0.7250, -0.0900, 0.1050, 0.0950, 0.3350
+car_apillarL dd -0.3600, 0.7300, 0.1550, 0.0550, 0.1450, 0.1500
+car_apillarR dd  0.3600, 0.7300, 0.1550, 0.0550, 0.1450, 0.1500
+car_bpillarL dd -0.3950, 0.7600, -0.1100, 0.0600, 0.1500, 0.0900
+car_bpillarR dd  0.3950, 0.7600, -0.1100, 0.0600, 0.1500, 0.0900
+car_cpillarL dd -0.3300, 0.7300, -0.4100, 0.0800, 0.1350, 0.1300
+car_cpillarR dd  0.3300, 0.7300, -0.4100, 0.0800, 0.1350, 0.1300
 car_lfender dd -0.7550, 0.4950, 1.0500, 0.2400, 0.2300, 0.4450
 car_rfender dd 0.7550, 0.4950, 1.0500, 0.2400, 0.2300, 0.4450
 car_lrear dd -0.7550, 0.5000, -1.0500, 0.2450, 0.2350, 0.4450
@@ -359,13 +368,37 @@ car:
     lea rsi,[f_red]
     call draw_car_ellipsoid
     lea rdi,[car_roof]
-    lea rsi,[f_roof]
+    lea rsi,[f_red]
     call draw_car_ellipsoid
     lea rdi,[car_windscreen]
     lea rsi,[f_glass]
     call draw_car_ellipsoid
     lea rdi,[car_rearwindow]
     lea rsi,[f_glass]
+    call draw_car_ellipsoid
+    lea rdi,[car_sideglassL]
+    lea rsi,[f_glass]
+    call draw_car_ellipsoid
+    lea rdi,[car_sideglassR]
+    lea rsi,[f_glass]
+    call draw_car_ellipsoid
+    lea rdi,[car_apillarL]
+    lea rsi,[f_red]
+    call draw_car_ellipsoid
+    lea rdi,[car_apillarR]
+    lea rsi,[f_red]
+    call draw_car_ellipsoid
+    lea rdi,[car_bpillarL]
+    lea rsi,[f_red]
+    call draw_car_ellipsoid
+    lea rdi,[car_bpillarR]
+    lea rsi,[f_red]
+    call draw_car_ellipsoid
+    lea rdi,[car_cpillarL]
+    lea rsi,[f_red]
+    call draw_car_ellipsoid
+    lea rdi,[car_cpillarR]
+    lea rsi,[f_red]
     call draw_car_ellipsoid
     lea rdi,[car_lfender]
     lea rsi,[f_red]
