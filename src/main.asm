@@ -50,6 +50,9 @@ f_glass dd 0.09,0.28,0.40
 f_gold dd 0.92,0.68,0.12
 f_tire dd 0.05,0.05,0.06
 f_stripe dd 0.97,0.96,0.89
+f_lamp dd 0.99,0.91,0.44
+f_rim dd 0.86,0.88,0.90
+f_roof dd 0.08,0.13,0.19
 f_wood dd 0.44,0.26,0.13
 f_sky dd 0.64,0.81,0.98,1.0
 light_pos dd -5.0,12.0,6.0,1.0
@@ -303,7 +306,44 @@ car:
     call glTranslatef
     lea rdi,[car_cabin_scale]
     call scale3
-    lea rdi,[f_glass]
+    lea rdi,[f_roof]
+    call set_rgb
+    call cube
+    call glPopMatrix
+    ; contrasting front headlights
+    call glPushMatrix
+    mov dword [tmpx],0xbf19999a ; x=-0.60
+    movss xmm0,[tmpx]
+    mov dword [tmpx],0x3f0ccccd ; y=.55
+    movss xmm1,[tmpx]
+    mov dword [tmpx],0x3f933333 ; z=1.15
+    movss xmm2,[tmpx]
+    call glTranslatef
+    mov dword [tmpx],0x3e3851ec ; .18
+    movss xmm0,[tmpx]
+    mov dword [tmpx],0x3d4ccccd ; .05
+    movss xmm1,[tmpx]
+    movss xmm2,[tmpx]
+    call glScalef
+    lea rdi,[f_lamp]
+    call set_rgb
+    call cube
+    call glPopMatrix
+    call glPushMatrix
+    mov dword [tmpx],0x3f19999a ; x=+.60
+    movss xmm0,[tmpx]
+    mov dword [tmpx],0x3f0ccccd ; y=.55
+    movss xmm1,[tmpx]
+    mov dword [tmpx],0x3f933333 ; z=1.15
+    movss xmm2,[tmpx]
+    call glTranslatef
+    mov dword [tmpx],0x3e3851ec
+    movss xmm0,[tmpx]
+    mov dword [tmpx],0x3d4ccccd
+    movss xmm1,[tmpx]
+    movss xmm2,[tmpx]
+    call glScalef
+    lea rdi,[f_lamp]
     call set_rgb
     call cube
     call glPopMatrix
@@ -317,11 +357,11 @@ car:
     call glTranslatef
     lea rdi,[spoiler_scale]
     call scale3
-    lea rdi,[f_gold]
+    lea rdi,[f_roof]
     call set_rgb
     call cube
     call glPopMatrix
-    ; four wheels, simple dark spheres for prototype
+    ; four wheels, with grey hubcaps facing the outside
     xor r14d,r14d
 .wheels:
     cmp r14d,4
@@ -442,8 +482,7 @@ scene:
     call cube
     call glPopMatrix
     call track
-    mov edi,GL_LIGHTING
-    call glEnable
+    ; For the first prototype use stable, unlit toy colors. Lighting will return with proper meshes/normals.
     call move_car
     call car
     add rsp,8
