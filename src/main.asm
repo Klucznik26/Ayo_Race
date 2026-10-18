@@ -67,8 +67,8 @@ f_hub dd 0.22,0.24,0.30
 f_brake dd 0.12,0.12,0.14
 wheel_90 dd 90.0
 wheel_180 dd 180.0
-wheel_radius dq 0.33
-wheel_inner dq 0.18
+wheel_radius dq 0.375
+wheel_inner dq 0.225
 wheel_hub_radius dq 0.075
 wheel_width dq 0.30
 wheel_face_offset dd 0.335
@@ -139,7 +139,7 @@ car_roof dd 0.0000,1.1000,-0.1900,0.5350,0.0950,0.4950
 ; Structured low coupe cabin: actual flat roof, sloped windshield,
 ; and separate side windows. No roof/sill/pillar spheres.
 cabin_roof_panel:
- dd -0.445,1.135,0.16,  0.445,1.135,0.16,  0.445,1.135,-0.62, -0.445,1.135,-0.62
+ dd -0.445,1.095,0.16,  0.445,1.095,0.16,  0.445,1.095,-0.62, -0.445,1.095,-0.62
 cabin_windshield_panel:
  dd -0.49,0.745,0.59,  0.49,0.745,0.59,  0.425,1.122,0.17, -0.425,1.122,0.17
 cabin_rear_panel:
@@ -510,10 +510,10 @@ car:
     call glPushMatrix
     test r14d,1
     jz .left
-    mov dword [tmpx],0x3f23d70a    ; right wheel starts x=+0.64
+    mov dword [tmpx],0x3f333333    ; right wheel inner face x=+0.70
     jmp .xset
 .left:
-    mov dword [tmpx],0xbf70a3d7   ; left wheel starts x=-0.94
+    mov dword [tmpx],0xbf800000   ; left wheel outer face x=-1.00
 .xset:
     cmp r14d,2
     jb .back
@@ -523,7 +523,7 @@ car:
     mov dword [tmpz],0xbf866666   ; rear axle z=-1.05
 .zset:
     movss xmm0,[tmpx]
-    mov dword [tmpx],0x3ed70a3d   ; wheel center y=0.42
+    mov dword [tmpx],0x3ec28f5c   ; wheel center y=0.38
     movss xmm1,[tmpx]
     movss xmm2,[tmpz]
     call glTranslatef
