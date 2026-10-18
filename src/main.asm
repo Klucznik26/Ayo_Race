@@ -3,7 +3,7 @@ global main
 
 extern SDL_Init, SDL_Quit, SDL_CreateWindow, SDL_DestroyWindow
 extern SDL_GL_CreateContext, SDL_GL_DeleteContext, SDL_GL_SwapWindow
-extern SDL_GL_SetSwapInterval, SDL_PollEvent, SDL_Delay, SDL_GetError
+extern SDL_GL_SetSwapInterval, SDL_GL_SetAttribute, SDL_PollEvent, SDL_Delay, SDL_GetError
 extern glClearColor, glClear, glViewport, glEnable, glDisable, glShadeModel
 extern glColorMaterial, glMaterialfv, glMaterialf, glLightfv
 extern glMatrixMode, glLoadIdentity, glPushMatrix, glPopMatrix, glMultMatrixf
@@ -15,6 +15,8 @@ extern sin, cos, atan2, printf
 
 %define SDL_INIT_VIDEO 0x20
 %define SDL_WINDOW_OPENGL 2
+%define SDL_GL_MULTISAMPLEBUFFERS 13
+%define SDL_GL_MULTISAMPLESAMPLES 14
 %define SDL_WINDOW_SHOWN 4
 %define SDL_QUIT 0x100
 %define SDL_KEYDOWN 0x300
@@ -403,9 +405,6 @@ car:
     lea rdi,[car_hood]
     lea rsi,[f_red]
     call draw_car_ellipsoid
-    lea rdi,[car_stripe_hood]
-    lea rsi,[f_blue_stripe]
-    call draw_car_ellipsoid
     ; Real framed coupe greenhouse: glass panels, solid painted roof, then posts.
     ; Flat glass should retain its dark blue color regardless of inherited normals.
     mov edi,GL_LIGHTING
@@ -426,9 +425,6 @@ car:
     call glEnable
     lea rdi,[car_roof]
     lea rsi,[f_red]
-    call draw_car_ellipsoid
-    lea rdi,[car_stripe_roof]
-    lea rsi,[f_blue_stripe]
     call draw_car_ellipsoid
     lea rdi,[car_apillarL]
     lea rsi,[f_red]
@@ -472,9 +468,6 @@ car:
     lea rdi,[car_tailR]
     lea rsi,[f_rearlamp]
     call draw_car_ellipsoid
-    lea rdi,[car_stripe_rear]
-    lea rsi,[f_blue_stripe]
-    call draw_car_ellipsoid
     ; Four round wheels, mounted along local X axle.
     ; The tires are cylinders and the alloy wheels are concentric disks.
     xor r14d,r14d
@@ -516,26 +509,8 @@ car:
     mov esi,24
     mov edx,1
     call gluCylinder
-    ; Sidewall at both ends (also closes the hollow cylinder).
-    mov rdi,[quadric]
-    movsd xmm0,[zero_d]
-    movsd xmm1,[wheel_radius]
-    mov esi,24
-    mov edx,1
-    call gluDisk
-    call glPushMatrix
-    movss xmm0,[f_zero]
-    movss xmm1,[f_zero]
-    movss xmm2,[wheel_face_offset]
-    call glTranslatef
-    mov rdi,[quadric]
-    movsd xmm0,[zero_d]
-    movsd xmm1,[wheel_radius]
-    mov esi,24
-    mov edx,1
-    call gluDisk
-    call glPopMatrix
-
+    ; Do not draw the coplanar GLU tire end disks: they interfered with
+    ; the metallic hub meshes and caused flickering as the car moved.
     ; Convex alloy wheel faces: unlike flat GLU disks, these have depth and
     ; stay visible from both near/far camera views with depth test enabled.
     ; Local wheel axis is Z after rotating car-local X onto GLU cylinder Z.
@@ -686,6 +661,13 @@ main:
     call SDL_Init
     test eax,eax
     js .fail
+    ; Request 4x MSAA to reduce jaggies on the tiny car and wheel spokes.
+    mov edi,SDL_GL_MULTISAMPLEBUFFERS
+    mov esi,1
+    call SDL_GL_SetAttribute
+    mov edi,SDL_GL_MULTISAMPLESAMPLES
+    mov esi,4
+    call SDL_GL_SetAttribute
     lea rdi,[caption]
     mov esi,0x2fff0000
     mov edx,0x2fff0000
