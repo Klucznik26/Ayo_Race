@@ -40,6 +40,7 @@ extern sin, cos, atan2, printf
 %define GL_NORMAL_ARRAY 0x8075
 %define GL_FLOAT 0x1406
 %define GL_QUADS 7
+%define GL_TRIANGLES 4
 %define GL_QUAD_STRIP 8
 %define GL_LINE_LOOP 2
 
@@ -391,20 +392,32 @@ car:
     movss [yaw_matrix+8],xmm0
     lea rdi,[yaw_matrix]
     call glMultMatrixf
-    ; Stylized round-bodied rear-engine sports coupe.
-    ; No box geometry: all body pieces are smooth scaled 3D meshes.
-    lea rdi,[car_body]
-    lea rsi,[f_red]
-    call draw_car_ellipsoid
-    lea rdi,[car_nose]
-    lea rsi,[f_red]
-    call draw_car_ellipsoid
-    lea rdi,[car_tail]
-    lea rsi,[f_red]
-    call draw_car_ellipsoid
-    lea rdi,[car_hood]
-    lea rsi,[f_red]
-    call draw_car_ellipsoid
+    ; Continuous body triangulation: eliminates seams/interpenetrating ellipsoids.
+    lea rdi,[f_red]
+    call set_rgb
+    mov edi,3
+    mov esi,GL_FLOAT
+    xor edx,edx
+    lea rcx,[car_mesh_vertices]
+    call glVertexPointer
+    mov edi,GL_FLOAT
+    xor esi,esi
+    lea rdx,[car_mesh_normals]
+    call glNormalPointer
+    mov edi,GL_TRIANGLES
+    xor esi,esi
+    mov edx,CAR_MESH_VERTEX_COUNT
+    call glDrawArrays
+    ; Restore pointers so tabletop / other cube geometry stays unaffected.
+    mov edi,3
+    mov esi,GL_FLOAT
+    xor edx,edx
+    lea rcx,[cube_vertices]
+    call glVertexPointer
+    mov edi,GL_FLOAT
+    xor esi,esi
+    lea rdx,[cube_normals]
+    call glNormalPointer
     ; Real framed coupe greenhouse: glass panels, solid painted roof, then posts.
     ; Flat glass should retain its dark blue color regardless of inherited normals.
     mov edi,GL_LIGHTING
@@ -444,18 +457,7 @@ car:
     lea rdi,[car_cpillarR]
     lea rsi,[f_red]
     call draw_car_ellipsoid
-    lea rdi,[car_lfender]
-    lea rsi,[f_red]
-    call draw_car_ellipsoid
-    lea rdi,[car_rfender]
-    lea rsi,[f_red]
-    call draw_car_ellipsoid
-    lea rdi,[car_lrear]
-    lea rsi,[f_red]
-    call draw_car_ellipsoid
-    lea rdi,[car_rrear]
-    lea rsi,[f_red]
-    call draw_car_ellipsoid
+    ; Fender shoulders are integral to the generated body mesh.
     lea rdi,[car_headL]
     lea rsi,[f_lamp]
     call draw_car_ellipsoid
@@ -801,4 +803,5 @@ align 16
 sign_double dq 0x8000000000000000
 align 16
 sign_float dd 0x80000000,0,0,0
+%include "build/car_mesh.inc"
 section .note.GNU-stack noalloc noexec nowrite progbits
