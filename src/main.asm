@@ -143,6 +143,7 @@ cube:
 
 ; draw a flat horizontal XZ ring with 96 segments
 track:
+    sub rsp,8                  ; align stack before external GL calls
     lea rdi,[f_black]
     movss xmm0,[rdi]
     movss xmm1,[rdi]
@@ -192,6 +193,7 @@ track:
     movsd xmm0,[road_inner_line_x]
     movsd xmm1,[road_inner_line_z]
     call white_loop
+    add rsp,8
     ret
 
 ; XMM0 = ellipse radius X (double), XMM1 = radius Z
@@ -246,16 +248,17 @@ scale3:
 
 ; All world geometry from simple meshes; stylized sports car facing local +Z
 car:
+    sub rsp,8
     call glPushMatrix
     movss xmm0,[carx]
     movss xmm1,[f_zero]
     movss xmm2,[carz]
     call glTranslatef
     movss xmm0,[yaw]
-    movss xmm1,[f_zero]
-    movss xmm2,[f_one]
+    movss xmm1,[f_one]
+    movss xmm2,[f_zero]
     movss xmm3,[f_zero]
-    call glRotatef                 ; rotation around Y (fix below via explicit call)
+    call glRotatef                 ; yaw around world Y
     ; Body
     call glPushMatrix
     movss xmm0,[f_zero]
@@ -334,10 +337,12 @@ car:
     jmp .wheels
 .done:
     call glPopMatrix
+    add rsp,8
     ret
 
 ; Calculate x/z and heading for a car on elliptical loop.
 move_car:
+    sub rsp,8
     movsd xmm0,[angle]
     call cos
     mulsd xmm0,[path_x]
@@ -370,9 +375,11 @@ move_car:
     subsd xmm0,[twopi]
 .store:
     movsd [angle],xmm0
+    add rsp,8
     ret
 
 scene:
+    sub rsp,8
     mov edi,GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT
     call glClear
     mov edi,GL_MODELVIEW
@@ -411,6 +418,7 @@ scene:
     call track
     call move_car
     call car
+    add rsp,8
     ret
 
 main:
@@ -419,8 +427,7 @@ main:
     push rbx
     push r12
     push r13
-    push r14
-    sub rsp,8                  ; stack 16-byte aligned
+    push r14                  ; stack 16-byte aligned after 5 pushes
     mov edi,SDL_INIT_VIDEO
     call SDL_Init
     test eax,eax
@@ -536,7 +543,6 @@ main:
     call printf
     mov eax,1
 .ret:
-    add rsp,8
     pop r14
     pop r13
     pop r12
