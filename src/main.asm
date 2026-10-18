@@ -450,37 +450,27 @@ car:
     call gluDisk
     call glPopMatrix
 
-    ; Put BOTH rim faces slightly OUTSIDE tire sidewalls.
-    ; Previous coplanar GLU disks were hidden by depth-buffer z-fighting.
-    ; First face is at -0.035, second is at +0.335 (tire is 0..0.30).
+    ; Convex alloy wheel faces: unlike flat GLU disks, these have depth and
+    ; stay visible from both near/far camera views with depth test enabled.
+    ; Local wheel axis is Z after rotating car-local X onto GLU cylinder Z.
     lea rdi,[f_rim]
     call set_rgb
     call glPushMatrix
     movss xmm0,[f_zero]
     movss xmm1,[f_zero]
-    movss xmm2,[wheel_back_offset]
+    mov dword [tmpx],0xbd4ccccd     ; face centre z=-0.05
+    movss xmm2,[tmpx]
     call glTranslatef
-    ; First side must face local -Z (away from tire). Rotate its disk 180 degrees.
-    ; GLU disks otherwise have +Z normals on BOTH ends.
-    movss xmm0,[wheel_180]
-    movss xmm1,[f_zero]
-    movss xmm2,[f_one]
-    movss xmm3,[f_zero]
-    call glRotatef
+    movss xmm0,[f_one]
+    movss xmm1,[f_one]
+    mov dword [tmpx],0x3e4ccccd     ; 0.20 depth scale
+    movss xmm2,[tmpx]
+    call glScalef
     mov rdi,[quadric]
-    movsd xmm0,[zero_d]
-    movsd xmm1,[wheel_inner]
-    mov esi,32
-    mov edx,1
-    call gluDisk
-    lea rdi,[f_hub]
-    call set_rgb
-    mov rdi,[quadric]
-    movsd xmm0,[zero_d]
-    movsd xmm1,[wheel_hub_radius]
-    mov esi,16
-    mov edx,1
-    call gluDisk
+    movsd xmm0,[wheel_inner]
+    mov esi,24
+    mov edx,12
+    call gluSphere
     call glPopMatrix
 
     lea rdi,[f_rim]
@@ -488,28 +478,19 @@ car:
     call glPushMatrix
     movss xmm0,[f_zero]
     movss xmm1,[f_zero]
-    movss xmm2,[wheel_face_offset]
-    call glTranslatef
-    mov rdi,[quadric]
-    movsd xmm0,[zero_d]
-    movsd xmm1,[wheel_inner]
-    mov esi,32
-    mov edx,1
-    call gluDisk
-    ; Center cap moves a little farther out to avoid depth competition.
-    mov dword [tmpx],0x3b83126f ; +0.004
-    movss xmm0,[f_zero]
-    movss xmm1,[f_zero]
+    mov dword [tmpx],0x3eb33333     ; face centre z=0.35
     movss xmm2,[tmpx]
     call glTranslatef
-    lea rdi,[f_hub]
-    call set_rgb
+    movss xmm0,[f_one]
+    movss xmm1,[f_one]
+    mov dword [tmpx],0x3e4ccccd
+    movss xmm2,[tmpx]
+    call glScalef
     mov rdi,[quadric]
-    movsd xmm0,[zero_d]
-    movsd xmm1,[wheel_hub_radius]
-    mov esi,16
-    mov edx,1
-    call gluDisk
+    movsd xmm0,[wheel_inner]
+    mov esi,24
+    mov edx,12
+    call gluSphere
     call glPopMatrix
     call glPopMatrix
     inc r14d
