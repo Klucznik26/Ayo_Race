@@ -39,11 +39,24 @@ for i in range(STATIONS):
 
 # Face normals for now: robust geometry, no separate ill-defined overlapping ellipsoids.
 triangles = []
+def wheel_arch(tri):
+    # Carve real openings into both flanks at the two axle positions.
+    # Otherwise the body mesh occludes half the tire and leaves rims
+    # looking like floating silver discs beneath the body.
+    x = sum(p[0] for p in tri) / 3
+    y = sum(p[1] for p in tri) / 3
+    z = sum(p[2] for p in tri) / 3
+    if abs(x) < .61:
+        return False
+    return any(((z-axle)/.48)**2 + ((y-.38)/.46)**2 < 1
+               for axle in (-1.05, 1.05))
 for i in range(STATIONS-1):
     for j in range(SEGMENTS):
         nxt=(j+1)%SEGMENTS
         a,b,c,d=rings[i][j],rings[i+1][j],rings[i+1][nxt],rings[i][nxt]
-        triangles.extend(((a,b,c),(a,c,d)))
+        for tri in ((a,b,c),(a,c,d)):
+            if not wheel_arch(tri):
+                triangles.append(tri)
 
 # Radial normals with normal interpolation for smoothly-shaded body panels.
 def normal(v):
