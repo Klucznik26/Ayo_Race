@@ -399,6 +399,9 @@ car:
     lea rsi,[f_red]
     call draw_car_ellipsoid
     ; Real framed coupe greenhouse: glass panels, solid painted roof, then posts.
+    ; Flat glass should retain its dark blue color regardless of inherited normals.
+    mov edi,GL_LIGHTING
+    call glDisable
     lea rdi,[glass_front]
     lea rsi,[f_glass]
     call draw_cabin_quad
@@ -411,6 +414,8 @@ car:
     lea rdi,[glass_right]
     lea rsi,[f_glass]
     call draw_cabin_quad
+    mov edi,GL_LIGHTING
+    call glEnable
     lea rdi,[car_roof]
     lea rsi,[f_red]
     call draw_car_ellipsoid
