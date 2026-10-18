@@ -28,32 +28,94 @@ def ellipsoid(name,center,size,color):
     mesh.apply_translation(center)
     add(mesh,name,color)
 
-# One continuous curved body mesh, with wheel arches opened in its sides.
-N=72
-zs=np.linspace(-1.71,1.71,69)
-vertices=[]
-for z in zs:
-    t=abs(z)/1.75
-    width=.94*(max(.12,1-t**5)**.45)+.045*sum(np.exp(-((z-v)/.37)**2) for v in (-1.03,1.03))
-    for angle in np.linspace(0,2*math.pi,N,endpoint=False):
-        x=width*np.sign(np.cos(angle))*abs(np.cos(angle))**.73
-        y=.50+(.28+.02*sum(np.exp(-((z-v)/.39)**2) for v in (-1.03,1.03)))*np.sign(np.sin(angle))*abs(np.sin(angle))**.76
-        vertices.append([x,y,z])
+# Smooth single car shell with true polygonal wheel-arch contours.
+# Unlike triangle deletion, the mesh boundary follows the arch curve continuously.
+# Coordinates: X = sideways, Y = up, Z = car length.
+AXLES = (-1.03, 1.03)
+WHEEL_CENTER_Y = 0.38
+WHEEL_RADIUS = 0.35
+ARCH_RADIUS = 0.43
+Z = np.linspace(-1.72, 1.72, 177)
 
+def shell_width(z):
+    t = min(abs(z)/1.75, 1.0)
+    taper = max(.30, 1.0-t**6)**.32
+    shoulders = .045 * sum(math.exp(-((z-v)/.37)**2) for v in AXLES)
+    return .96*taper + shoulders
+
+def arch_bottom(z):
+    bottom=.245
+    for axle in AXLES:
+        dz=z-axle
+        if abs(dz) < ARCH_RADIUS:
+            opening = WHEEL_CENTER_Y+math.sqrt(ARCH_RADIUS**2-dz**2)
+            bottom=max(bottom,opening)
+    return bottom
+
+verts=[]
 faces=[]
-for i in range(len(zs)-1):
-    for j in range(N):
-        a=i*N+j; b=(i+1)*N+j; c=(i+1)*N+(j+1)%N; d=i*N+(j+1)%N
-        for face in ((a,b,c),(a,c,d)):
-            centroid=np.asarray([vertices[k] for k in face]).mean(axis=0)
-            if abs(centroid[0])>.66 and any(
-                ((centroid[2]-axle)/.46)**2+((centroid[1]-.37)/.42)**2<1
-                for axle in (-1.03,1.03)
-            ):
+def quad(a,b,c,d):
+    faces.extend(((a,b,c),(a,c,d)))
+
+def add_grid(rows):
+    base=len(verts)
+    for row in rows:
+        verts.extend(row)
+    for i in range(len(rows)-1):
+        for j in range(len(rows[0])-1):
+            n=len(rows[0])
+            a=base+i*n+j
+            quad(a,a+n,a+n+1,a+1)
+
+# Upper shoulder, hood and curved upper surface: connected to the two side skins.
+top=[]
+for z in Z:
+    width=shell_width(z)
+    row=[]
+    for u in np.linspace(-1,1,31):
+        x=width*u
+        crown=.095*(1-u*u)
+        y=.805+crown-.06*(abs(z)/1.75)**4
+        row.append((x,y,z))
+    top.append(row)
+add_grid(top)
+
+# Proper arches are not after-the-fact missing triangles: the lower edge of
+# each side panel is the actual semicircular wheel-arch boundary.
+for side in (-1,1):
+    rows=[]
+    for z in Z:
+        width=shell_width(z)
+        bottom=arch_bottom(z)
+        upper=.805-.06*(abs(z)/1.75)**4
+        rows.append([(side*width,bottom+(upper-bottom)*u,z)
+                     for u in np.linspace(0,1,9)])
+    add_grid(rows)
+
+body=trimesh.Trimesh(vertices=np.asarray(verts),faces=np.asarray(faces),
+                     process=False)
+# One-sided materials are handled correctly by reversed winding where needed.
+body.fix_normals()
+add(body,"Sculpted body and real arched side panels",red)
+
+# Painted curved lip above each opening (small radius trim following arch).
+for side in (-1,1):
+    for axle in AXLES:
+        theta=np.linspace(0,math.pi,55)
+        path=[]
+        for ang in theta:
+            z=axle+ARCH_RADIUS*math.cos(ang)
+            y=WHEEL_CENTER_Y+ARCH_RADIUS*math.sin(ang)
+            path.append((side*(shell_width(z)+.008),y+.015,z))
+        for k in range(len(path)-1):
+            aa,bb=np.array(path[k]),np.array(path[k+1])
+            length=np.linalg.norm(bb-aa)
+            if length<1e-7:
                 continue
-            faces.append(face)
-body=trimesh.Trimesh(vertices=vertices,faces=faces,process=False)
-add(body,"Continuous curved body",red)
+            lip=trimesh.creation.cylinder(radius=.018,height=length,sections=8)
+            lip.apply_transform(trimesh.geometry.align_vectors([0,0,1],bb-aa))
+            lip.apply_translation((aa+bb)/2)
+            add(lip,f"Wheel arch lip {side} {axle} {k}",red)
 
 # Separate glazed surfaces and physical roof pillars.
 lower=[(-.52,.74,.61),(.52,.74,.61),(.52,.74,-.90),(-.52,.74,-.90)]
@@ -84,17 +146,17 @@ for i,j in ((0,1),(1,2),(2,3),(3,0)):
 
 for axle,z in (("rear",-1.03),("front",1.03)):
     for side in (-1,1):
-        x=side*.80
+        x=side*.83
         rotation=trimesh.transformations.rotation_matrix(math.pi/2,[0,1,0])
-        tire=trimesh.creation.cylinder(radius=.37,height=.205,sections=40)
-        tire.apply_transform(rotation); tire.apply_translation((x,.38,z))
+        tire=trimesh.creation.cylinder(radius=WHEEL_RADIUS,height=.19,sections=40)
+        tire.apply_transform(rotation); tire.apply_translation((x,WHEEL_CENTER_Y,z))
         add(tire,f"{axle} tire {side}",black)
-        face=x+side*.108
-        rim=trimesh.creation.cylinder(radius=.244,height=.014,sections=40)
-        rim.apply_transform(rotation); rim.apply_translation((face,.38,z))
+        face=x+side*.102
+        rim=trimesh.creation.cylinder(radius=.230,height=.014,sections=40)
+        rim.apply_transform(rotation); rim.apply_translation((face,WHEEL_CENTER_Y,z))
         add(rim,f"{axle} alloy rim {side}",silver)
         hub=trimesh.creation.cylinder(radius=.071,height=.018,sections=20)
-        hub.apply_transform(rotation); hub.apply_translation((face+side*.015,.38,z))
+        hub.apply_transform(rotation); hub.apply_translation((face+side*.015,WHEEL_CENTER_Y,z))
         add(hub,f"{axle} wheel hub {side}",black)
 
 for side in (-1,1):
