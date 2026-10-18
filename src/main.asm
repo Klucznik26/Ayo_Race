@@ -10,7 +10,7 @@ extern glMatrixMode, glLoadIdentity, glPushMatrix, glPopMatrix, glMultMatrixf
 extern glTranslatef, glRotatef, glScalef, glColor3f
 extern glVertexPointer, glNormalPointer, glEnableClientState, glDrawArrays
 extern glBegin, glEnd, glVertex3f, glLineWidth
-extern gluPerspective, gluLookAt, gluNewQuadric, gluSphere
+extern gluPerspective, gluLookAt, gluNewQuadric, gluSphere, gluCylinder, gluDisk
 extern sin, cos, atan2, printf
 
 %define SDL_INIT_VIDEO 0x20
@@ -51,7 +51,15 @@ f_gold dd 0.92,0.68,0.12
 f_tire dd 0.05,0.05,0.06
 f_stripe dd 0.97,0.96,0.89
 f_lamp dd 0.99,0.91,0.44
-f_rim dd 0.86,0.88,0.90
+f_rim dd 0.78,0.84,0.93
+f_hub dd 0.22,0.24,0.30
+f_brake dd 0.12,0.12,0.14
+wheel_90 dd 90.0
+wheel_radius dq 0.36
+wheel_inner dq 0.235
+wheel_hub_radius dq 0.075
+wheel_width dq 0.30
+wheel_face_offset dd 0.303
 f_roof dd 0.08,0.13,0.19
 f_wood dd 0.44,0.26,0.13
 f_sky dd 0.64,0.81,0.98,1.0
@@ -92,8 +100,8 @@ half_turn dq 3.141592653589793
 neg_one dd -1.0
 zero_d dq 0.0
 ground_scale dd 23.0,0.12,15.0
-car_body_scale dd 0.80,0.23,1.12
-car_cabin_scale dd 0.58,0.26,0.48
+car_body_scale dd 0.82,0.21,1.30
+car_cabin_scale dd 0.56,0.24,0.60
 spoiler_scale dd 0.78,0.055,0.17
 wheel_size dq 0.37
 
@@ -285,7 +293,7 @@ car:
     ; Body
     call glPushMatrix
     movss xmm0,[f_zero]
-    mov dword [tmpx],0x3ee66666   ; 0.45
+    mov dword [tmpx],0x3f051eb8   ; body y=0.52
     movss xmm1,[tmpx]
     movss xmm2,[f_zero]
     call glTranslatef
@@ -298,9 +306,9 @@ car:
     ; bright center stripe on the hood
     call glPushMatrix
     movss xmm0,[f_zero]
-    mov dword [tmpx],0x3f333333
+    mov dword [tmpx],0x3f3d70a4
     movss xmm1,[tmpx]
-    mov dword [tmpx],0x3f400000
+    mov dword [tmpx],0x3f666666
     movss xmm2,[tmpx]
     call glTranslatef
     mov dword [tmpx],0x3e4ccccd
@@ -317,9 +325,9 @@ car:
     ; Windscreen / cabin
     call glPushMatrix
     movss xmm0,[f_zero]
-    mov dword [tmpx],0x3f0ccccd   ; 0.55
+    mov dword [tmpx],0x3f147ae1   ; cabin center y=0.58
     movss xmm1,[tmpx]
-    mov dword [tmpx],0xbe99999a   ; -0.30
+    mov dword [tmpx],0xbeb33333   ; cabin z=-0.35
     movss xmm2,[tmpx]
     call glTranslatef
     lea rdi,[car_cabin_scale]
@@ -334,7 +342,7 @@ car:
     movss xmm0,[tmpx]
     mov dword [tmpx],0x3f0ccccd ; y=.55
     movss xmm1,[tmpx]
-    mov dword [tmpx],0x3f933333 ; z=1.15
+    mov dword [tmpx],0x3fa66666 ; z=1.30
     movss xmm2,[tmpx]
     call glTranslatef
     mov dword [tmpx],0x3e3851ec ; .18
@@ -352,7 +360,7 @@ car:
     movss xmm0,[tmpx]
     mov dword [tmpx],0x3f0ccccd ; y=.55
     movss xmm1,[tmpx]
-    mov dword [tmpx],0x3f933333 ; z=1.15
+    mov dword [tmpx],0x3fa66666 ; z=1.30
     movss xmm2,[tmpx]
     call glTranslatef
     mov dword [tmpx],0x3e3851ec
@@ -379,7 +387,8 @@ car:
     call set_rgb
     call cube
     call glPopMatrix
-    ; four wheels, with grey hubcaps facing the outside
+    ; Four round wheels, mounted along local X axle.
+    ; The tires are cylinders and the alloy wheels are concentric disks.
     xor r14d,r14d
 .wheels:
     cmp r14d,4
@@ -387,33 +396,93 @@ car:
     call glPushMatrix
     test r14d,1
     jz .left
-    mov dword [tmpx],0x3f666666  ; +0.9
+    mov dword [tmpx],0x3f570a3d    ; right: cylinder starts x=+0.84
     jmp .xset
 .left:
-    mov dword [tmpx],0xbf666666  ; -0.9
+    mov dword [tmpx],0xbf91eb85   ; left: cylinder starts x=-1.14
 .xset:
     cmp r14d,2
     jb .back
-    mov dword [tmpz],0x3f333333  ; +0.7
+    mov dword [tmpz],0x3f4ccccd   ; front axle z=+0.8
     jmp .zset
 .back:
-    mov dword [tmpz],0xbf333333  ; -0.7
+    mov dword [tmpz],0xbf4ccccd   ; rear axle z=-0.8
 .zset:
     movss xmm0,[tmpx]
-    mov dword [tmpx],0x3ea3d70a ; 0.32
+    mov dword [tmpx],0x3ec28f5c   ; wheel center y=0.38
     movss xmm1,[tmpx]
     movss xmm2,[tmpz]
     call glTranslatef
+    ; GLU cylinder extends in local +Z, rotate onto car's local +X.
+    movss xmm0,[wheel_90]
+    movss xmm1,[f_zero]
+    movss xmm2,[f_one]
+    movss xmm3,[f_zero]
+    call glRotatef
     lea rdi,[f_tire]
     call set_rgb
-    ; rectangular tire, low-profile, aligned with both axles
-    mov dword [tmpx],0x3e4ccccd
-    movss xmm0,[tmpx]
-    mov dword [tmpx],0x3ecccccd
-    movss xmm1,[tmpx]
+    mov rdi,[quadric]
+    movsd xmm0,[wheel_radius]
+    movsd xmm1,[wheel_radius]
+    movsd xmm2,[wheel_width]
+    mov esi,24
+    mov edx,1
+    call gluCylinder
+    ; Sidewall at both ends (also closes the hollow cylinder).
+    mov rdi,[quadric]
+    movsd xmm0,[zero_d]
+    movsd xmm1,[wheel_radius]
+    mov esi,24
+    mov edx,1
+    call gluDisk
+    call glPushMatrix
+    movss xmm0,[f_zero]
+    movss xmm1,[f_zero]
+    movss xmm2,[wheel_face_offset]
+    call glTranslatef
+    mov rdi,[quadric]
+    movsd xmm0,[zero_d]
+    movsd xmm1,[wheel_radius]
+    mov esi,24
+    mov edx,1
+    call gluDisk
+    call glPopMatrix
+
+    ; Visible silver alloy disks on both outside and inside faces.
+    lea rdi,[f_rim]
+    call set_rgb
+    mov rdi,[quadric]
+    movsd xmm0,[zero_d]
+    movsd xmm1,[wheel_inner]
+    mov esi,24
+    mov edx,1
+    call gluDisk
+    call glPushMatrix
+    movss xmm0,[f_zero]
+    movss xmm1,[f_zero]
+    movss xmm2,[wheel_face_offset]
+    call glTranslatef
+    mov rdi,[quadric]
+    movsd xmm0,[zero_d]
+    movsd xmm1,[wheel_inner]
+    mov esi,24
+    mov edx,1
+    call gluDisk
+    ; Dark hub accent
+    lea rdi,[f_hub]
+    call set_rgb
+    movss xmm0,[f_zero]
+    movss xmm1,[f_zero]
+    mov dword [tmpx],0x3b03126f   ; +0.002
     movss xmm2,[tmpx]
-    call glScalef
-    call cube
+    call glTranslatef
+    mov rdi,[quadric]
+    movsd xmm0,[zero_d]
+    movsd xmm1,[wheel_hub_radius]
+    mov esi,16
+    mov edx,1
+    call gluDisk
+    call glPopMatrix
     call glPopMatrix
     inc r14d
     jmp .wheels
