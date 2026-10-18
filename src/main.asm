@@ -55,12 +55,13 @@ f_rim dd 0.78,0.84,0.93
 f_hub dd 0.22,0.24,0.30
 f_brake dd 0.12,0.12,0.14
 wheel_90 dd 90.0
+wheel_180 dd 180.0
 wheel_radius dq 0.36
 wheel_inner dq 0.235
 wheel_hub_radius dq 0.075
 wheel_width dq 0.30
-wheel_face_offset dd 0.313
-wheel_back_offset dd -0.013
+wheel_face_offset dd 0.335
+wheel_back_offset dd -0.035
 f_roof dd 0.08,0.13,0.19
 f_wood dd 0.44,0.26,0.13
 f_sky dd 0.64,0.81,0.98,1.0
@@ -451,7 +452,7 @@ car:
 
     ; Put BOTH rim faces slightly OUTSIDE tire sidewalls.
     ; Previous coplanar GLU disks were hidden by depth-buffer z-fighting.
-    ; First face is at -0.013, second is at +0.313 (tire is 0..0.30).
+    ; First face is at -0.035, second is at +0.335 (tire is 0..0.30).
     lea rdi,[f_rim]
     call set_rgb
     call glPushMatrix
@@ -459,6 +460,13 @@ car:
     movss xmm1,[f_zero]
     movss xmm2,[wheel_back_offset]
     call glTranslatef
+    ; First side must face local -Z (away from tire). Rotate its disk 180 degrees.
+    ; GLU disks otherwise have +Z normals on BOTH ends.
+    movss xmm0,[wheel_180]
+    movss xmm1,[f_zero]
+    movss xmm2,[f_one]
+    movss xmm3,[f_zero]
+    call glRotatef
     mov rdi,[quadric]
     movsd xmm0,[zero_d]
     movsd xmm1,[wheel_inner]
