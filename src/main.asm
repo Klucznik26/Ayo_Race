@@ -59,7 +59,8 @@ wheel_radius dq 0.36
 wheel_inner dq 0.235
 wheel_hub_radius dq 0.075
 wheel_width dq 0.30
-wheel_face_offset dd 0.303
+wheel_face_offset dd 0.313
+wheel_back_offset dd -0.013
 f_roof dd 0.08,0.13,0.19
 f_wood dd 0.44,0.26,0.13
 f_sky dd 0.64,0.81,0.98,1.0
@@ -448,15 +449,34 @@ car:
     call gluDisk
     call glPopMatrix
 
-    ; Visible silver alloy disks on both outside and inside faces.
+    ; Put BOTH rim faces slightly OUTSIDE tire sidewalls.
+    ; Previous coplanar GLU disks were hidden by depth-buffer z-fighting.
+    ; First face is at -0.013, second is at +0.313 (tire is 0..0.30).
     lea rdi,[f_rim]
     call set_rgb
+    call glPushMatrix
+    movss xmm0,[f_zero]
+    movss xmm1,[f_zero]
+    movss xmm2,[wheel_back_offset]
+    call glTranslatef
     mov rdi,[quadric]
     movsd xmm0,[zero_d]
     movsd xmm1,[wheel_inner]
-    mov esi,24
+    mov esi,32
     mov edx,1
     call gluDisk
+    lea rdi,[f_hub]
+    call set_rgb
+    mov rdi,[quadric]
+    movsd xmm0,[zero_d]
+    movsd xmm1,[wheel_hub_radius]
+    mov esi,16
+    mov edx,1
+    call gluDisk
+    call glPopMatrix
+
+    lea rdi,[f_rim]
+    call set_rgb
     call glPushMatrix
     movss xmm0,[f_zero]
     movss xmm1,[f_zero]
@@ -465,17 +485,17 @@ car:
     mov rdi,[quadric]
     movsd xmm0,[zero_d]
     movsd xmm1,[wheel_inner]
-    mov esi,24
+    mov esi,32
     mov edx,1
     call gluDisk
-    ; Dark hub accent
-    lea rdi,[f_hub]
-    call set_rgb
+    ; Center cap moves a little farther out to avoid depth competition.
+    mov dword [tmpx],0x3b83126f ; +0.004
     movss xmm0,[f_zero]
     movss xmm1,[f_zero]
-    mov dword [tmpx],0x3b03126f   ; +0.002
     movss xmm2,[tmpx]
     call glTranslatef
+    lea rdi,[f_hub]
+    call set_rgb
     mov rdi,[quadric]
     movsd xmm0,[zero_d]
     movsd xmm1,[wheel_hub_radius]
