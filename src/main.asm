@@ -4,7 +4,7 @@ global main
 extern SDL_Init, SDL_Quit, SDL_CreateWindow, SDL_DestroyWindow
 extern SDL_GL_CreateContext, SDL_GL_DeleteContext, SDL_GL_SwapWindow
 extern SDL_GL_SetSwapInterval, SDL_PollEvent, SDL_Delay, SDL_GetError
-extern glClearColor, glClear, glViewport, glEnable, glShadeModel
+extern glClearColor, glClear, glViewport, glEnable, glDisable, glShadeModel
 extern glColorMaterial, glMaterialfv, glMaterialf, glLightfv
 extern glMatrixMode, glLoadIdentity, glPushMatrix, glPopMatrix
 extern glTranslatef, glRotatef, glScalef, glColor3f
@@ -43,13 +43,14 @@ caption db "Ayo Race 0.1 — ASM 3D Demo | Esc: exit",0
 error_fmt db "SDL error: %s",10,0
 f_zero dd 0.0
 f_one dd 1.0
-f_red dd 0.93,0.075,0.085
+f_red dd 0.85,0.018,0.035
 f_white dd 0.97
 f_black dd 0.025
 f_glass dd 0.09,0.28,0.40
 f_gold dd 0.92,0.68,0.12
 f_tire dd 0.05,0.05,0.06
-f_wood dd 0.66,0.46,0.30
+f_stripe dd 0.97,0.96,0.89
+f_wood dd 0.44,0.26,0.13
 f_sky dd 0.64,0.81,0.98,1.0
 light_pos dd -5.0,12.0,6.0,1.0
 light_diffuse dd 1.0,0.97,0.90,1.0
@@ -88,9 +89,9 @@ half_turn dq 3.141592653589793
 neg_one dd -1.0
 zero_d dq 0.0
 ground_scale dd 20.0,0.12,15.0
-car_body_scale dd 0.91,0.29,1.36
-car_cabin_scale dd 0.68,0.32,0.65
-spoiler_scale dd 0.89,0.055,0.20
+car_body_scale dd 0.80,0.23,1.12
+car_cabin_scale dd 0.58,0.26,0.48
+spoiler_scale dd 0.78,0.055,0.17
 wheel_size dq 0.37
 
 ; 24 independent vertices, six cube faces with corresponding normals
@@ -206,8 +207,8 @@ white_loop:
     movss xmm1,[rdi]
     movss xmm2,[rdi]
     call glColor3f
-    movss xmm0,[f_one]
-    addss xmm0,[f_one]
+    mov dword [tmpx],0x40800000
+    movss xmm0,[tmpx]
     call glLineWidth
     mov edi,GL_LINE_LOOP
     call glBegin
@@ -230,7 +231,8 @@ white_loop:
     movsd xmm0,[cos_x]
     mulsd xmm0,[rsp]
     cvtsd2ss xmm0,xmm0
-    movss xmm1,[f_zero]
+    mov dword [tmpx],0x3dcccccd
+    movss xmm1,[tmpx]
     call glVertex3f
     inc r13d
     jmp .loop
@@ -272,10 +274,29 @@ car:
     call set_rgb
     call cube
     call glPopMatrix
+    ; bright center stripe on the hood
+    call glPushMatrix
+    movss xmm0,[f_zero]
+    mov dword [tmpx],0x3f333333
+    movss xmm1,[tmpx]
+    mov dword [tmpx],0x3f400000
+    movss xmm2,[tmpx]
+    call glTranslatef
+    mov dword [tmpx],0x3e4ccccd
+    movss xmm0,[tmpx]
+    mov dword [tmpx],0x3c23d70a
+    movss xmm1,[tmpx]
+    mov dword [tmpx],0x3ef5c28f
+    movss xmm2,[tmpx]
+    call glScalef
+    lea rdi,[f_stripe]
+    call set_rgb
+    call cube
+    call glPopMatrix
     ; Windscreen / cabin
     call glPushMatrix
     movss xmm0,[f_zero]
-    mov dword [tmpx],0x3f28f5c3   ; 0.66
+    mov dword [tmpx],0x3f0ccccd   ; 0.55
     movss xmm1,[tmpx]
     mov dword [tmpx],0xbe99999a   ; -0.30
     movss xmm2,[tmpx]
@@ -289,9 +310,9 @@ car:
     ; spoiler
     call glPushMatrix
     movss xmm0,[f_zero]
-    mov dword [tmpx],0x3f4ccccd ; 0.8
+    mov dword [tmpx],0x3f333333 ; 0.7
     movss xmm1,[tmpx]
-    mov dword [tmpx],0xbf800000 ; -1.0
+    mov dword [tmpx],0xbf666666 ; -0.9
     movss xmm2,[tmpx]
     call glTranslatef
     lea rdi,[spoiler_scale]
@@ -327,11 +348,14 @@ car:
     call glTranslatef
     lea rdi,[f_tire]
     call set_rgb
-    mov rdi,[quadric]
-    movsd xmm0,[wheel_size]
-    mov esi,16
-    mov edx,12
-    call gluSphere
+    ; rectangular tire, low-profile, aligned with both axles
+    mov dword [tmpx],0x3e4ccccd
+    movss xmm0,[tmpx]
+    mov dword [tmpx],0x3ecccccd
+    movss xmm1,[tmpx]
+    movss xmm2,[tmpx]
+    call glScalef
+    call cube
     call glPopMatrix
     inc r14d
     jmp .wheels
@@ -402,7 +426,9 @@ scene:
     mov esi,GL_POSITION
     lea rdx,[light_pos]
     call glLightfv
-    ; table
+    ; unlit table and painted track
+    mov edi,GL_LIGHTING
+    call glDisable
     call glPushMatrix
     movss xmm0,[f_zero]
     mov dword [tmpx],0xbec28f5c ; -0.38
@@ -416,6 +442,8 @@ scene:
     call cube
     call glPopMatrix
     call track
+    mov edi,GL_LIGHTING
+    call glEnable
     call move_car
     call car
     add rsp,8
