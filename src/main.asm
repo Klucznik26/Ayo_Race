@@ -67,8 +67,8 @@ f_hub dd 0.22,0.24,0.30
 f_brake dd 0.12,0.12,0.14
 wheel_90 dd 90.0
 wheel_180 dd 180.0
-wheel_radius dq 0.36
-wheel_inner dq 0.235
+wheel_radius dq 0.33
+wheel_inner dq 0.18
 wheel_hub_radius dq 0.075
 wheel_width dq 0.30
 wheel_face_offset dd 0.335
@@ -156,6 +156,15 @@ cabin_pillars:
  dd  0.50,0.78,-0.23,  0.445,1.14,-0.23
  dd -0.49,0.78,-0.88, -0.445,1.14,-0.62
  dd  0.49,0.78,-0.88,  0.445,1.14,-0.62
+ ; windshield rim connecting roof and hood
+ dd -0.50,0.77,0.59, 0.50,0.77,0.59
+ dd -0.445,1.14,0.17, 0.445,1.14,0.17
+ ; rear glass lower edge and roof rear edge
+ dd -0.49,0.78,-0.88, 0.49,0.78,-0.88
+ dd -0.445,1.14,-0.62, 0.445,1.14,-0.62
+ ; left/right longitudinal roof rails
+ dd -0.445,1.14,0.17, -0.445,1.14,-0.62
+ dd 0.445,1.14,0.17, 0.445,1.14,-0.62
 
 ; Narrow blue longitudinal racing stripe on hood, painted roof and rear.
 car_stripe_hood dd 0.0000,0.7100,0.8200,0.1550,0.0200,0.5950
@@ -464,14 +473,14 @@ car:
     call draw_cabin_quad
     lea rdi,[f_red]
     call set_rgb
-    mov dword [tmpx],0x40a00000  ; frame width 5px
+    mov dword [tmpx],0x40000000  ; thin window frame 2px
     movss xmm0,[tmpx]
     call glLineWidth
     mov edi,GL_LINES
     call glBegin
     lea rbx,[cabin_pillars]
 %assign ii 0
-%rep 12
+%rep 24
     lea rdi,[rbx+ii*12]
     call glVertex3fv
 %assign ii ii+1
@@ -514,7 +523,7 @@ car:
     mov dword [tmpz],0xbf866666   ; rear axle z=-1.05
 .zset:
     movss xmm0,[tmpx]
-    mov dword [tmpx],0x3ec28f5c   ; wheel center y=0.38
+    mov dword [tmpx],0x3ed70a3d   ; wheel center y=0.42
     movss xmm1,[tmpx]
     movss xmm2,[tmpz]
     call glTranslatef
@@ -543,12 +552,12 @@ car:
     call glPushMatrix
     movss xmm0,[f_zero]
     movss xmm1,[f_zero]
-    mov dword [tmpx],0xbd4ccccd     ; face centre z=-0.05
+    mov dword [tmpx],0xbd23d70a     ; left face inset z=-0.04
     movss xmm2,[tmpx]
     call glTranslatef
     movss xmm0,[f_one]
     movss xmm1,[f_one]
-    mov dword [tmpx],0x3e4ccccd     ; 0.20 depth scale
+    mov dword [tmpx],0x3dcccccd     ; 0.10 depth scale
     movss xmm2,[tmpx]
     call glScalef
     mov rdi,[quadric]
@@ -563,12 +572,12 @@ car:
     call glPushMatrix
     movss xmm0,[f_zero]
     movss xmm1,[f_zero]
-    mov dword [tmpx],0x3eb33333     ; face centre z=0.35
+    mov dword [tmpx],0x3eae147b     ; right face z=0.34
     movss xmm2,[tmpx]
     call glTranslatef
     movss xmm0,[f_one]
     movss xmm1,[f_one]
-    mov dword [tmpx],0x3e4ccccd
+    mov dword [tmpx],0x3dcccccd
     movss xmm2,[tmpx]
     call glScalef
     mov rdi,[quadric]
