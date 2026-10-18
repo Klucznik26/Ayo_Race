@@ -1,0 +1,5 @@
+ayo-race
+*.o
+*.swp
+build/
+.DS_Store
