@@ -1,6 +1,9 @@
 default rel
 global main
 
+; Generated before NASM runs by tools/generate_car.py.
+%include "build/car_mesh.inc"
+
 extern SDL_Init, SDL_Quit, SDL_CreateWindow, SDL_DestroyWindow
 extern SDL_GL_CreateContext, SDL_GL_DeleteContext, SDL_GL_SwapWindow
 extern SDL_GL_SetSwapInterval, SDL_GL_SetAttribute, SDL_PollEvent, SDL_Delay, SDL_GetError
@@ -803,5 +806,4 @@ align 16
 sign_double dq 0x8000000000000000
 align 16
 sign_float dd 0x80000000,0,0,0
-%include "build/car_mesh.inc"
 section .note.GNU-stack noalloc noexec nowrite progbits
