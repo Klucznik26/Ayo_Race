@@ -118,7 +118,7 @@ angle resq 1
 tvalue resq 1
 sx resq 1
 cz resq 1
-cx resq 1
+cos_x resq 1
 yaw resd 1
 carx resd 1
 carz resd 1
@@ -162,11 +162,11 @@ track:
     divsd xmm0,xmm1
     movsd [tvalue],xmm0
     call cos
-    movsd [cx],xmm0
+    movsd [cos_x],xmm0
     movsd xmm0,[tvalue]
     call sin
     movsd [sx],xmm0
-    movsd xmm0,[cx]
+    movsd xmm0,[cos_x]
     mulsd xmm0,[road_outer_x]
     cvtsd2ss xmm0,xmm0
     movss xmm1,[f_zero]
@@ -174,7 +174,7 @@ track:
     mulsd xmm2,[road_outer_z]
     cvtsd2ss xmm2,xmm2
     call glVertex3f
-    movsd xmm0,[cx]
+    movsd xmm0,[cos_x]
     mulsd xmm0,[road_inner_x]
     cvtsd2ss xmm0,xmm0
     movss xmm1,[f_zero]
@@ -222,12 +222,12 @@ white_loop:
     divsd xmm0,xmm1
     movsd [tvalue],xmm0
     call cos
-    movsd [cx],xmm0
+    movsd [cos_x],xmm0
     movsd xmm0,[tvalue]
     call sin
     mulsd xmm0,[rsp+8]
     cvtsd2ss xmm2,xmm0
-    movsd xmm0,[cx]
+    movsd xmm0,[cos_x]
     mulsd xmm0,[rsp]
     cvtsd2ss xmm0,xmm0
     movss xmm1,[f_zero]
