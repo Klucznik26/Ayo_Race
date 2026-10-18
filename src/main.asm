@@ -23,6 +23,9 @@ extern sin, cos, atan2, printf
 %define GL_DEPTH_TEST 0x0b71
 %define GL_LIGHTING 0x0b50
 %define GL_LIGHT0 0x4000
+%define GL_NORMALIZE 0x0BA1
+%define GL_AMBIENT 0x1200
+%define GL_DIFFUSE 0x1201
 %define GL_COLOR_MATERIAL 0x0b57
 %define GL_FRONT_AND_BACK 0x0408
 %define GL_AMBIENT_AND_DIFFUSE 0x1602
@@ -66,8 +69,9 @@ f_roof dd 0.08,0.13,0.19
 f_wood dd 0.44,0.26,0.13
 f_sky dd 0.64,0.81,0.98,1.0
 light_pos dd -5.0,12.0,6.0,1.0
-light_diffuse dd 1.0,0.97,0.90,1.0
-specular dd 0.65,0.65,0.65,1.0
+light_diffuse dd 0.94,0.90,0.84,1.0
+light_ambient dd 0.32,0.34,0.38,1.0
+specular dd 0.48,0.48,0.50,1.0
 shininess dd 85.0
 aspect dq 1.77777777777778
 fovy dq 48.0
@@ -577,9 +581,13 @@ scene:
     call cube
     call glPopMatrix
     call track
-    ; For the first prototype use stable, unlit toy colors. Lighting will return with proper meshes/normals.
+    ; Keep track/table unlit, but shade the 3D car using sphere normals.
+    mov edi,GL_LIGHTING
+    call glEnable
     call move_car
     call car
+    mov edi,GL_LIGHTING
+    call glDisable
     add rsp,8
     ret
 
@@ -623,6 +631,9 @@ main:
     call glClearColor
     mov edi,GL_DEPTH_TEST
     call glEnable
+    ; All body parts are nonuniformly scaled spheres; renormalize their normals.
+    mov edi,GL_NORMALIZE
+    call glEnable
     mov edi,GL_LIGHTING
     call glEnable
     mov edi,GL_LIGHT0
@@ -641,7 +652,11 @@ main:
     movss xmm0,[shininess]
     call glMaterialf
     mov edi,GL_LIGHT0
-    mov esi,0x1201       ; GL_DIFFUSE
+    mov esi,GL_AMBIENT
+    lea rdx,[light_ambient]
+    call glLightfv
+    mov edi,GL_LIGHT0
+    mov esi,GL_DIFFUSE
     lea rdx,[light_diffuse]
     call glLightfv
     mov edi,GL_PROJECTION
