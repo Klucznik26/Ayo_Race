@@ -44,6 +44,7 @@ extern sin, cos, atan2, printf
 %define GL_FLOAT 0x1406
 %define GL_QUADS 7
 %define GL_TRIANGLES 4
+%define GL_LINES 1
 %define GL_QUAD_STRIP 8
 %define GL_LINE_LOOP 2
 
@@ -135,6 +136,27 @@ glass_left:
 glass_right:
  dd 0.54,0.77,0.54, 0.54,0.77,-0.80, 0.47,1.08,-0.59, 0.47,1.08,0.21
 car_roof dd 0.0000,1.1000,-0.1900,0.5350,0.0950,0.4950
+; Structured low coupe cabin: actual flat roof, sloped windshield,
+; and separate side windows. No roof/sill/pillar spheres.
+cabin_roof_panel:
+ dd -0.445,1.135,0.16,  0.445,1.135,0.16,  0.445,1.135,-0.62, -0.445,1.135,-0.62
+cabin_windshield_panel:
+ dd -0.49,0.745,0.59,  0.49,0.745,0.59,  0.425,1.122,0.17, -0.425,1.122,0.17
+cabin_rear_panel:
+ dd -0.455,0.77,-0.91,  -0.425,1.122,-0.62,  0.425,1.122,-0.62,  0.455,0.77,-0.91
+cabin_left_panel:
+ dd -0.49,0.785,0.53, -0.49,0.785,-0.86, -0.425,1.122,-0.62, -0.425,1.122,0.16
+cabin_right_panel:
+ dd 0.49,0.785,-0.86, 0.49,0.785,0.53, 0.425,1.122,0.16, 0.425,1.122,-0.62
+; Pillar segments are actual linear braces (not ellipsoids).
+cabin_pillars:
+ dd -0.50,0.77,0.59, -0.445,1.14,0.17
+ dd  0.50,0.77,0.59,  0.445,1.14,0.17
+ dd -0.50,0.78,-0.23, -0.445,1.14,-0.23
+ dd  0.50,0.78,-0.23,  0.445,1.14,-0.23
+ dd -0.49,0.78,-0.88, -0.445,1.14,-0.62
+ dd  0.49,0.78,-0.88,  0.445,1.14,-0.62
+
 ; Narrow blue longitudinal racing stripe on hood, painted roof and rear.
 car_stripe_hood dd 0.0000,0.7100,0.8200,0.1550,0.0200,0.5950
 car_stripe_roof dd 0.0000,1.2010,-0.1900,0.1450,0.0090,0.3950
@@ -421,45 +443,42 @@ car:
     xor esi,esi
     lea rdx,[cube_normals]
     call glNormalPointer
-    ; Real framed coupe greenhouse: glass panels, solid painted roof, then posts.
-    ; Flat glass should retain its dark blue color regardless of inherited normals.
+    ; Roof and glazed cabin as real polygon surfaces, not floating bubbles.
+    ; Keep glazing and frame unlit for consistent tint across camera angles.
     mov edi,GL_LIGHTING
     call glDisable
-    lea rdi,[glass_front]
+    lea rdi,[cabin_windshield_panel]
     lea rsi,[f_glass]
     call draw_cabin_quad
-    lea rdi,[glass_rear]
+    lea rdi,[cabin_rear_panel]
     lea rsi,[f_glass]
     call draw_cabin_quad
-    lea rdi,[glass_left]
+    lea rdi,[cabin_left_panel]
     lea rsi,[f_glass]
     call draw_cabin_quad
-    lea rdi,[glass_right]
+    lea rdi,[cabin_right_panel]
     lea rsi,[f_glass]
     call draw_cabin_quad
+    lea rdi,[cabin_roof_panel]
+    lea rsi,[f_red]
+    call draw_cabin_quad
+    lea rdi,[f_red]
+    call set_rgb
+    mov dword [tmpx],0x40a00000  ; frame width 5px
+    movss xmm0,[tmpx]
+    call glLineWidth
+    mov edi,GL_LINES
+    call glBegin
+    lea rbx,[cabin_pillars]
+%assign ii 0
+%rep 12
+    lea rdi,[rbx+ii*12]
+    call glVertex3fv
+%assign ii ii+1
+%endrep
+    call glEnd
     mov edi,GL_LIGHTING
     call glEnable
-    lea rdi,[car_roof]
-    lea rsi,[f_red]
-    call draw_car_ellipsoid
-    lea rdi,[car_apillarL]
-    lea rsi,[f_red]
-    call draw_car_ellipsoid
-    lea rdi,[car_apillarR]
-    lea rsi,[f_red]
-    call draw_car_ellipsoid
-    lea rdi,[car_bpillarL]
-    lea rsi,[f_red]
-    call draw_car_ellipsoid
-    lea rdi,[car_bpillarR]
-    lea rsi,[f_red]
-    call draw_car_ellipsoid
-    lea rdi,[car_cpillarL]
-    lea rsi,[f_red]
-    call draw_car_ellipsoid
-    lea rdi,[car_cpillarR]
-    lea rsi,[f_red]
-    call draw_car_ellipsoid
     ; Fender shoulders are integral to the generated body mesh.
     lea rdi,[car_headL]
     lea rsi,[f_lamp]
